@@ -181,84 +181,70 @@ class Challenge:
         finally:
             conn.close()
 
-    def get_participants_count(self):
-        """Получает количество активных участников в чате"""
+    def get_participants_count(self) -> int:
+        """Получает количество участников челленджа"""
         conn = get_connection()
         cursor = conn.cursor()
         
         try:
-            # Нормализуем chat_id (убираем префикс -100 если он есть)
-            normalized_chat_id = self.chat_id.replace('-100', '')
+            # Нормализуем chat_id если он есть
+            normalized_chat_id = str(self.chat_id).replace('-100', '') if self.chat_id else None
             
-            print(f"Debug: Getting active participants for chat_id={normalized_chat_id}")
-            
-            # Получаем только тех пользователей, которые сейчас в чате
-            cursor.execute("""
-                SELECT COUNT(DISTINCT user_id)
-                FROM users
-                WHERE user_id IN (
-                    SELECT DISTINCT user_id 
-                    FROM running_log 
+            if self.is_system and normalized_chat_id:
+                # Для системного челленджа считаем всех участников чата
+                cursor.execute("""
+                    SELECT COUNT(DISTINCT user_id)
+                    FROM running_log
                     WHERE chat_id = ?
-                )
-                AND is_active = 1  -- добавим эту колонку для отслеживания активных пользователей
-            """, (normalized_chat_id,))
+                    AND date_added BETWEEN ? AND ?
+                """, (normalized_chat_id, self.start_date, self.end_date))
+            else:
+                # Для обычного челленджа считаем только добавленных участников
+                cursor.execute("""
+                    SELECT COUNT(*)
+                    FROM challenge_participants
+                    WHERE challenge_id = ?
+                """, (self.challenge_id,))
             
-            count = cursor.fetchone()[0]
-            print(f"Found {count} active participants")
+            result = cursor.fetchone()
+            return int(result[0]) if result[0] is not None else 0
             
-            return count
-            
-        except Exception as e:
-            print(f"Error in get_participants_count: {e}")
-            return 0
         finally:
+            cursor.close()
             conn.close()
 
-    def get_total_progress(self):
-        """Получает общий прогресс всех участников чата за год"""
+    def get_total_progress(self) -> float:
+        """Получает общий прогресс по челленджу"""
         conn = get_connection()
         cursor = conn.cursor()
         
         try:
-            # Используем год из start_date
-            year = datetime.strptime(self.start_date, '%Y-%m-%d').year if isinstance(self.start_date, str) else self.start_date.year
+            # Нормализуем chat_id если он есть
+            normalized_chat_id = str(self.chat_id).replace('-100', '') if self.chat_id else None
             
-            # Нормализуем chat_id (убираем префикс -100 если он есть)
-            normalized_chat_id = self.chat_id.replace('-100', '')
+            if self.is_system and normalized_chat_id:
+                # Для системного челленджа учитываем все пробежки в чате
+                cursor.execute("""
+                    SELECT COALESCE(SUM(km), 0)
+                    FROM running_log
+                    WHERE chat_id = ?
+                    AND date_added BETWEEN ? AND ?
+                """, (normalized_chat_id, self.start_date, self.end_date))
+            else:
+                # Для обычного челленджа учитываем только пробежки участников
+                cursor.execute("""
+                    SELECT COALESCE(SUM(r.km), 0)
+                    FROM running_log r
+                    JOIN challenge_participants cp ON r.user_id = cp.user_id
+                    WHERE cp.challenge_id = ?
+                    AND r.date_added BETWEEN ? AND ?
+                """, (self.challenge_id, self.start_date, self.end_date))
             
-            print(f"Debug: original chat_id={self.chat_id}, normalized={normalized_chat_id}, year={year}")
-            
-            query = """
-                SELECT COALESCE(SUM(km), 0) as total_km,
-                       COUNT(*) as runs_count,
-                       COUNT(DISTINCT user_id) as users_count
-                FROM running_log 
-                WHERE chat_id = ? 
-                AND strftime('%Y', date_added) = ?
-            """
-            
-            cursor.execute(query, (normalized_chat_id, str(year)))
             result = cursor.fetchone()
-            total_km, runs_count, users_count = result
+            return float(result[0]) if result[0] is not None else 0.0
             
-            print(f"""
-            Debug info:
-            - Total KM: {total_km}
-            - Number of runs: {runs_count}
-            - Number of unique users: {users_count}
-            - Chat ID used in query: {normalized_chat_id}
-            - Year used in query: {year}
-            """)
-            
-            return round(total_km, 2) if total_km else 0.0
-            
-        except Exception as e:
-            print(f"Error in get_total_progress: {e}")
-            import traceback
-            traceback.print_exc()
-            return 0.0
         finally:
+            cursor.close()
             conn.close()
 
     @staticmethod
