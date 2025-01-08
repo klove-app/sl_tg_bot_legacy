@@ -25,6 +25,7 @@ from handlers.stats_handlers import register_handlers as register_stats_handlers
 from handlers.goal_handlers import register_handlers as register_goal_handlers
 from handlers.base_handler import BaseHandler
 from handlers.chat_goal_handlers import register_handlers as register_chat_goal_handlers
+from handlers.reset_handlers import ResetHandler
 
 class MessageHandler(BaseHandler):
     def register(self):
@@ -465,42 +466,37 @@ def register_message_handlers(bot):
 def main():
     """Основная функция запуска бота"""
     try:
-        logger.info("=== Bot startup sequence ===")
+        logger.info("Starting bot...")
         
-        # Инициализируем базу данных
-        logger.info("Initializing database...")
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database initialized successfully")
+        # Создаем таблицы в базе данных
+        Base.metadata.create_all(engine)
+        logger.info("Database tables created")
         
         # Регистрируем обработчики
-        logger.info("Registering handlers...")
-        
-        # Сначала регистрируем обработчики команд
-        register_stats_handlers(bot)
-        register_goal_handlers(bot)
+        register_chat_handlers(bot)
         register_challenge_handlers(bot)
         register_team_handlers(bot)
+        register_stats_handlers(bot)
+        register_goal_handlers(bot)
         register_chat_goal_handlers(bot)
         
-        # Затем регистрируем обработчики чата
-        register_chat_handlers(bot)
+        # Регистрируем обработчик сброса данных
+        reset_handler = ResetHandler(bot)
+        reset_handler.register()
         
-        # В конце регистрируем обработчики обычных сообщений
+        # Регистрируем обработчики сообщений
         register_message_handlers(bot)
         
-        logger.info("All handlers registered successfully")
-        
-        logger.info("Starting bot polling...")
-        logger.info("Bot username: @" + bot.get_me().username)
-        logger.info("=== Bot is ready ===")
+        logger.info("Bot handlers registered")
         
         # Запускаем бота
-        bot.infinity_polling(timeout=60, long_polling_timeout=60)
+        logger.info("Bot is running...")
+        bot.infinity_polling()
         
     except Exception as e:
-        logger.error(f"Critical error in main: {e}")
+        logger.error(f"Error starting bot: {e}")
         logger.error(f"Full traceback: {traceback.format_exc()}")
-        raise
+        sys.exit(1)
 
 if __name__ == "__main__":
    main()
