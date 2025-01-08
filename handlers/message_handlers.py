@@ -49,10 +49,10 @@ class MessageHandler(BaseHandler):
                     user = User.get_by_id(str(message.from_user.id))
                     total_km = RunningLog.get_user_total_km(str(message.from_user.id))
                     
-                    response = f"✅ Записана пробежка {km:.1f} км!\n"
+                    response = f"✅ Записана пробежка {km:.2f} км!\n"
                     if user and user.goal_km > 0:
                         progress = (total_km / user.goal_km * 100)
-                        response += f"📊 Прогресс: {total_km:.1f} из {user.goal_km:.1f} км ({progress:.1f}%)"
+                        response += f"📊 Прогресс: {total_km:.2f} из {user.goal_km:.2f} км ({progress:.2f}%)"
                     
                     self.bot.reply_to(message, response)
                     self.logger.info(f"Logged run: {km}km for user {message.from_user.id}")

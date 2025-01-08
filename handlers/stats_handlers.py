@@ -102,18 +102,18 @@ class StatsHandler(BaseHandler):
             response = f"📊 Статистика {user.username}\n\n"
             response += f"За {current_year} год:\n"
             response += f"🏃‍♂️ Пробежек: {stats['runs_count']}\n"
-            response += f"📏 Всего: {stats['total_km']:.1f} км\n"
-            response += f"📈 Средняя дистанция: {stats['avg_km']:.1f} км\n"
+            response += f"📏 Всего: {stats['total_km']:.2f} км\n"
+            response += f"📈 Средняя дистанция: {stats['avg_km']:.2f} км\n"
             
             if user.goal_km > 0:
                 progress = (stats['total_km'] / user.goal_km * 100)
-                response += f"\n🎯 Цель на год: {user.goal_km:.1f} км\n"
-                response += f"✨ Прогресс: {progress:.1f}%\n"
+                response += f"\n🎯 Цель на год: {user.goal_km:.2f} км\n"
+                response += f"✨ Прогресс: {progress:.2f}%\n"
             
             response += f"\n🏆 Лучшие показатели:\n"
-            response += f"💪 Лучшая пробежка: {best_stats['best_run']:.1f} км\n"
-            response += f"🎖 Всего пробежек: {best_stats['total_runs']}\n"
-            response += f"🌟 Общая дистанция: {best_stats['total_km']:.1f} км"
+            response += f"💪 Лучшая пробежка: {best_stats['best_run']:.2f} км\n"
+            response += f"� Всего пробежек: {best_stats['total_runs']}\n"
+            response += f"🌟 Общая дистанция: {best_stats['total_km']:.2f} км"
 
             self.logger.info(f"Sending response: {response}")
             self.bot.reply_to(message, response)
@@ -154,12 +154,12 @@ class StatsHandler(BaseHandler):
                 response += f"Общая статистика чата:\n"
                 response += f"👥 Участников: {year_stats['users_count']}\n"
                 response += f"🏃‍♂️ Пробежек: {year_stats['runs_count']}\n"
-                response += f"📏 Общая дистанция: {year_stats['total_km']:.1f} км\n"
-                response += f"💪 Лучшая пробежка: {year_stats['best_run']:.1f} км\n\n"
+                response += f"📏 Общая дистанция: {year_stats['total_km']:.2f} км\n"
+                response += f"💪 Лучшая пробежка: {year_stats['best_run']:.2f} км\n\n"
                 
                 month_name = calendar.month_name[current_month]
                 response += f"За {month_name}:\n"
-                response += f"📏 Общая дистанция: {month_stats['total_km']:.1f} км\n"
+                response += f"📏 Общая дистанция: {month_stats['total_km']:.2f} км\n"
                 response += f"🏃‍♂️ Пробежек: {month_stats['runs_count']}\n\n"
             
             # Добавляем топ бегунов
@@ -170,10 +170,10 @@ class StatsHandler(BaseHandler):
                 username = user.username if user else "Unknown"
                 
                 response += f"{i}. {username}\n"
-                response += f"├ Дистанция: {runner['total_km']:.1f} км\n"
+                response += f"├ Дистанция: {runner['total_km']:.2f} км\n"
                 response += f"├ Пробежек: {runner['runs_count']}\n"
-                response += f"├ Средняя: {runner['avg_km']:.1f} км\n"
-                response += f"└ Лучшая: {runner['best_run']:.1f} км\n\n"
+                response += f"├ Средняя: {runner['avg_km']:.2f} км\n"
+                response += f"└ Лучшая: {runner['best_run']:.2f} км\n\n"
             
             self.logger.info(f"Sending response: {response}")
             self.bot.reply_to(message, response)
@@ -222,10 +222,10 @@ class StatsHandler(BaseHandler):
                 if user.goal_km > 0:
                     progress = (year_stats['total_km'] / user.goal_km * 100)
                     progress_bar = self._generate_progress_bar(progress)
-                    response += f"🎯 Цель на {current_year}: {user.goal_km:.1f} км\n"
-                    response += f"{progress_bar} {progress:.1f}%\n"
-                    response += f"📊 Пройдено: {year_stats['total_km']:.1f} км\n"
-                    response += f"⭐️ Осталось: {user.goal_km - year_stats['total_km']:.1f} км\n\n"
+                    response += f"🎯 Цель на {current_year}: {user.goal_km:.2f} км\n"
+                    response += f"{progress_bar} {progress:.2f}%\n"
+                    response += f"📊 Пройдено: {year_stats['total_km']:.2f} км\n"
+                    response += f"⭐️ Осталось: {user.goal_km - year_stats['total_km']:.2f} км\n\n"
                 else:
                     response += "🎯 Цель на год не установлена\n\n"
                 
@@ -233,15 +233,15 @@ class StatsHandler(BaseHandler):
                 month_name = calendar.month_name[current_month]
                 response += f"📅 <b>{month_name}</b>\n"
                 response += f"├ Пробежек: {month_stats['runs_count']}\n"
-                response += f"├ Дистанция: {month_stats['total_km']:.1f} км\n"
+                response += f"├ Дистанция: {month_stats['total_km']:.2f} км\n"
                 if month_stats['runs_count'] > 0:
-                    response += f"└ Средняя: {month_stats['avg_km']:.1f} км\n\n"
+                    response += f"└ Средняя: {month_stats['avg_km']:.2f} км\n\n"
                 else:
                     response += f"└ Средняя: 0.0 км\n\n"
                 
                 # Лучшие результаты
                 response += f"🏆 <b>Лучшие результаты</b>\n"
-                response += f"├ Пробежка: {best_stats['best_run']:.1f} км\n"
+                response += f"├ Пробежка: {best_stats['best_run']:.2f} км\n"
                 response += f"└ Всего: {best_stats['total_runs']} пробежек\n"
                 
                 # Создаем клавиатуру
@@ -329,30 +329,30 @@ class StatsHandler(BaseHandler):
             # Годовая статистика
             article += f"<b>Статистика за {current_year} год</b>\n"
             article += f"🏃‍♂️ Количество пробежек: {year_stats['runs_count']}\n"
-            article += f"📏 Общая дистанция: {year_stats['total_km']:.1f} км\n"
-            article += f"📈 Средняя дистанция: {year_stats['avg_km']:.1f} км\n"
+            article += f"📏 Общая дистанция: {year_stats['total_km']:.2f} км\n"
+            article += f"📈 Средняя дистанция: {year_stats['avg_km']:.2f} км\n"
             if year_stats['runs_count'] > 0:
-                article += f"🔥 Темп роста: {year_stats['total_km'] / (current_month):.1f} км/месяц\n"
+                article += f"🔥 Темп роста: {year_stats['total_km'] / (current_month):.2f} км/месяц\n"
             
             # Цель и прогресс
             if user.goal_km > 0:
                 progress = (year_stats['total_km'] / user.goal_km * 100)
                 article += f"\n<b>Цель на {current_year} год</b>\n"
-                article += f"🎯 Цель: {user.goal_km:.1f} км\n"
-                article += f"✨ Текущий прогресс: {progress:.1f}%\n"
-                article += f"📊 Осталось: {user.goal_km - year_stats['total_km']:.1f} км\n"
+                article += f"🎯 Цель: {user.goal_km:.2f} км\n"
+                article += f"✨ Текущий прогресс: {progress:.2f}%\n"
+                article += f"📊 Осталось: {user.goal_km - year_stats['total_km']:.2f} км\n"
             
             # Месячная статистика
             article += f"\n<b>Статистика за {month_name}</b>\n"
             article += f"🏃‍♂️ Количество пробежек: {month_stats['runs_count']}\n"
-            article += f"📏 Общая дистанция: {month_stats['total_km']:.1f} км\n"
+            article += f"📏 Общая дистанция: {month_stats['total_km']:.2f} км\n"
             if month_stats['runs_count'] > 0:
-                article += f"📈 Средняя дистанция: {month_stats['avg_km']:.1f} км\n"
+                article += f"📈 Средняя дистанция: {month_stats['avg_km']:.2f} км\n"
             
             # Лучшие показатели
             article += f"\n<b>Лучшие показатели за все время</b>\n"
-            article += f"💪 Лучшая пробежка: {best_stats['best_run']:.1f} км\n"
-            article += f"🌟 Общая дистанция: {best_stats['total_km']:.1f} км\n"
+            article += f"💪 Лучшая пробежка: {best_stats['best_run']:.2f} км\n"
+            article += f"🌟 Общая дистанция: {best_stats['total_km']:.2f} км\n"
             article += f"📊 Всего пробежек: {best_stats['total_runs']}\n"
             
             return article
@@ -432,9 +432,9 @@ class StatsHandler(BaseHandler):
                     
                     response = "Выберите цель на год:\n\n"
                     if last_year_stats['total_km'] > 0:
-                        response += f"📊 В {last_year} году вы пробежали: {last_year_stats['total_km']:.1f} км\n"
+                        response += f"📊 В {last_year} году вы пробежали: {last_year_stats['total_km']:.2f} км\n"
                         response += f"🏃‍♂️ Количество пробежек: {last_year_stats['runs_count']}\n"
-                        response += f"📈 Средняя дистанция: {last_year_stats['avg_km']:.1f} км\n\n"
+                        response += f"📈 Средняя дистанция: {last_year_stats['avg_km']:.2f} км\n\n"
                     
                     response += "Выберите один из вариантов или настройте точное значение:"
                     
@@ -568,17 +568,17 @@ class StatsHandler(BaseHandler):
                     # Статистика за текущий год
                     response += f"📊 Статистика за {current_year} год:\n"
                     response += f"├ 🏃‍♂️ Пробежек: {year_stats['runs_count']}\n"
-                    response += f"├ 📏 Всего: {year_stats['total_km']:.1f} км\n"
+                    response += f"├ 📏 Всего: {year_stats['total_km']:.2f} км\n"
                     if year_stats['runs_count'] > 0:
-                        response += f"└ 📈 Средняя: {year_stats['avg_km']:.1f} км\n\n"
+                        response += f"└ 📈 Средняя: {year_stats['avg_km']:.2f} км\n\n"
                     else:
                         response += f"└ 📈 Средняя: 0.0 км\n\n"
                     
                     # Цель и прогресс
                     if goal > 0:
                         progress = (year_stats['total_km'] / goal * 100)
-                        response += f"🎯 Цель на {current_year} год: {goal:.1f} км\n"
-                        response += f"✨ Прогресс: {progress:.1f}%\n"
+                        response += f"🎯 Цель на {current_year} год: {goal:.2f} км\n"
+                        response += f"✨ Прогресс: {progress:.2f}%\n"
                     else:
                         response += "🎯 Цель на год не установлена\n"
                     
@@ -676,10 +676,10 @@ class StatsHandler(BaseHandler):
             
             for run in runs:
                 run_date = run.date_added.strftime("%d.%m")
-                response += f"📅 {run_date}: {run.km:.1f} км\n"
+                response += f"📅 {run_date}: {run.km:.2f} км\n"
                 markup.row(
                     InlineKeyboardButton(
-                        f"✏️ {run_date} ({run.km:.1f} км)",
+                        f"✏️ {run_date} ({run.km:.2f} км)",
                         callback_data=f"edit_run_{run.log_id}"
                     ),
                     InlineKeyboardButton(
@@ -756,7 +756,7 @@ class StatsHandler(BaseHandler):
                 response = (
                     f"📝 Редактирование пробежки\n\n"
                     f"📅 Дата: {run.date_added.strftime('%d.%m.%Y')}\n"
-                    f"📅 Текущая дистанция: {current_km:.1f} км\n\n"
+                    f"📅 Текущая дистанция: {current_km:.2f} км\n\n"
                     f"Выберите изменение дистанции:"
                 )
                 
@@ -823,7 +823,7 @@ class StatsHandler(BaseHandler):
                 
                 self.bot.answer_callback_query(
                     call.id,
-                    f"✅ Дистанция изменена: {old_distance:.1f} → {new_distance:.1f} км"
+                    f"✅ Дистанция изменена: {old_distance:.2f} → {new_distance:.2f} км"
                 )
                 
                 # Возвращаемся к списку пробежек
@@ -989,10 +989,10 @@ class StatsHandler(BaseHandler):
                     user = User.get_by_id(user_id)
                     total_km = RunningLog.get_user_total_km(user_id)
                     
-                    response = f"✅ Записана пробежка {km:.1f} км!\n"
+                    response = f"✅ Записана пробежка {km:.2f} км!\n"
                     if user and user.goal_km > 0:
                         progress = (total_km / user.goal_km * 100)
-                        response += f"📊 Прогресс: {total_km:.1f} из {user.goal_km:.1f} км ({progress:.1f}%)"
+                        response += f"📊 Прогресс: {total_km:.2f} из {user.goal_km:.2f} км ({progress:.2f}%)"
                     
                     self.bot.answer_callback_query(
                         call.id,

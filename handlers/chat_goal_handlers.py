@@ -101,16 +101,16 @@ class ChatGoalHandler(BaseHandler):
             
             # Основная информация о цели
             response += (
-                f"🎯 Цель: {challenge.goal_km:.1f} км\n"
-                f"{progress_bar} {progress:.1f}%\n"
-                f"👥 Общий прогресс: {total_km:.1f} км\n"
+                f"🎯 Цель: {challenge.goal_km:.2f} км\n"
+                f"{progress_bar} {progress:.2f}%\n"
+                f"👥 Общий прогресс: {total_km:.2f} км\n"
                 f"👤 Участников: {participants_count}\n\n"
             )
             
             # Прогресс и прогнозы
             response += "📈 Прогресс и прогнозы:\n"
-            response += f"├ Ожидаемый прогресс: {expected_progress:.1f} км\n"
-            response += f"├ Текущий темп: {current_pace:.1f} км/год\n"
+            response += f"├ Ожидаемый прогресс: {expected_progress:.2f} км\n"
+            response += f"├ Текущий темп: {current_pace:.2f} км/год\n"
             if current_pace > 0:
                 days_to_goal = (challenge.goal_km - total_km) / (current_pace / days_in_year)
                 goal_date = datetime.now() + timedelta(days=days_to_goal)
@@ -121,7 +121,7 @@ class ChatGoalHandler(BaseHandler):
             
             # Статистика за текущий месяц
             response += "📅 За текущий месяц:\n"
-            response += f"├ Пройдено: {current_month_stats['total_km']:.1f} км\n"
+            response += f"├ Пройдено: {current_month_stats['total_km']:.2f} км\n"
             response += f"├ Пробежек: {current_month_stats['runs_count']}\n"
             response += f"└ Участников: {current_month_stats['users_count']}\n\n"
             
@@ -130,16 +130,16 @@ class ChatGoalHandler(BaseHandler):
                 response += "🏆 Топ-3 участника:\n"
                 medals = ["🥇", "🥈", "🥉"]
                 for i, runner in enumerate(top_runners):
-                    response += f"{medals[i]} {runner['user_name']}: {runner['total_km']:.1f} км\n"
+                    response += f"{medals[i]} {runner['user_name']}: {runner['total_km']:.2f} км\n"
                 response += "\n"
             
             # Средние показатели
             avg_per_user = total_km / participants_count if participants_count > 0 else 0
             response += "📊 Средние показатели:\n"
-            response += f"├ Км на участника: {avg_per_user:.1f} км\n"
+            response += f"├ Км на участника: {avg_per_user:.2f} км\n"
             if participants_count > 0 and days_passed > 0:
                 avg_daily = total_km / days_passed
-                response += f"└ Км в день: {avg_daily:.1f} км\n\n"
+                response += f"└ Км в день: {avg_daily:.2f} км\n\n"
             
             # Сравнение с прошлым годом
             if last_year_stats['total_km'] > 0:
@@ -155,14 +155,14 @@ class ChatGoalHandler(BaseHandler):
                 progress_vs_last_year = (total_km / last_year_progress['total_km'] * 100) if last_year_progress['total_km'] > 0 else 0
                 
                 response += f"📅 Сравнение с {last_year} годом:\n"
-                response += f"├ На эту же дату: {last_year_progress['total_km']:.1f} км\n"
+                response += f"├ На эту же дату: {last_year_progress['total_km']:.2f} км\n"
                 
                 # Добавляем информативное сравнение
                 km_diff = total_km - last_year_progress['total_km']
                 if km_diff > 0:
-                    response += f"└ Опережаем на {km_diff:.1f} км (+{progress_vs_last_year - 100:.1f}%) 🚀\n"
+                    response += f"└ Опережаем на {km_diff:.2f} км (+{progress_vs_last_year - 100:.2f}%) ��\n"
                 elif km_diff < 0:
-                    response += f"└ Отстаем на {abs(km_diff):.1f} км ({progress_vs_last_year:.1f}%) ⚡️\n"
+                    response += f"└ Отстаем на {abs(km_diff):.2f} км ({progress_vs_last_year:.2f}%) ⚡️\n"
                 else:
                     response += "└ Точно такой же результат как в прошлом году 🎯\n"
             
@@ -311,9 +311,9 @@ class ChatGoalHandler(BaseHandler):
             # Формируем ответное сообщение
             response = (
                 f"✅ Установлена общая цель чата на {year} год!\n\n"
-                f"🎯 Цель: {goal:.1f} км\n"
-                f"{progress_bar} {progress:.1f}%\n"
-                f"👥 Текущий прогресс: {total_km:.1f} км\n"
+                f"🎯 Цель: {goal:.2f} км\n"
+                f"{progress_bar} {progress:.2f}%\n"
+                f"👥 Текущий прогресс: {total_km:.2f} км\n"
                 f"👤 Участников: {participants_count}\n\n"
                 f"Все участники чата автоматически участвуют в достижении цели."
             )
@@ -503,9 +503,9 @@ class ChatGoalHandler(BaseHandler):
                 # Обновляем сообщение
                 response = (
                     f"✅ Установлена общая цель чата на {year} год!\n\n"
-                    f"🎯 Цель: {goal:.1f} км\n"
-                    f"{progress_bar} {progress:.1f}%\n"
-                    f"👥 Текущий прогресс: {total_km:.1f} км\n"
+                    f"🎯 Цель: {goal:.2f} км\n"
+                    f"{progress_bar} {progress:.2f}%\n"
+                    f"👥 Текущий прогресс: {total_km:.2f} км\n"
                     f"👤 Участников: {participants_count}\n\n"
                     f"Все участники чата автоматически участвуют в достижении цели."
                 )

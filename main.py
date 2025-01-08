@@ -26,6 +26,7 @@ from handlers.goal_handlers import register_handlers as register_goal_handlers
 from handlers.base_handler import BaseHandler
 from handlers.chat_goal_handlers import register_handlers as register_chat_goal_handlers
 from handlers.reset_handlers import ResetHandler
+from handlers.admin_handlers import register_handlers as register_admin_handlers
 
 class MessageHandler(BaseHandler):
     def register(self):
@@ -106,9 +107,9 @@ class MessageHandler(BaseHandler):
                     response = (
                         f"🎉 *Пробежка записана!*\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        f"📍 Дистанция: *{km:.1f} км*\n"
+                        f"📍 Дистанция: *{km:.2f} км*\n"
                         f"📅 Дата: {datetime.now().strftime('%d.%m.%Y')}\n"
-                        f"📝 Всего: *{total_km:.1f} км*\n"
+                        f"📝 Всего: *{total_km:.2f} км*\n"
                     )
                     
                     if user.goal_km > 0:
@@ -116,9 +117,9 @@ class MessageHandler(BaseHandler):
                         remaining = user.goal_km - total_km
                         response += (
                             f"\n🎯 *Годовая цель*\n"
-                            f"• Цель: {user.goal_km:.1f} км\n"
-                            f"• Прогресс: {progress:.1f}%\n"
-                            f"• Осталось: {remaining:.1f} км"
+                            f"• Цель: {user.goal_km:.2f} км\n"
+                            f"• Прогресс: {progress:.2f}%\n"
+                            f"• Осталось: {remaining:.2f} км"
                         )
                     
                     self.bot.reply_to(message, response, parse_mode='Markdown')
@@ -241,9 +242,9 @@ class MessageHandler(BaseHandler):
                 response = (
                     f"🎉 *Пробежка с фото записана!*\n"
                     f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"📍 Дистанция: *{km:.1f} км*\n"
+                    f"📍 Дистанция: *{km:.2f} км*\n"
                     f"📅 Дата: {datetime.now().strftime('%d.%m.%Y')}\n"
-                    f"📝 Всего: *{total_km:.1f} км*"
+                    f"📝 Всего: *{total_km:.2f} км*"
                 )
                 
                 if user.goal_km > 0:
@@ -251,9 +252,9 @@ class MessageHandler(BaseHandler):
                     remaining = user.goal_km - total_km
                     response += (
                         f"\n\n🎯 *Годовая цель*\n"
-                        f"• Цель: {user.goal_km:.1f} км\n"
-                        f"• Прогресс: {progress:.1f}%\n"
-                        f"• Осталось: {remaining:.1f} км"
+                        f"• Цель: {user.goal_km:.2f} км\n"
+                        f"• Прогресс: {progress:.2f}%\n"
+                        f"• Осталось: {remaining:.2f} км"
                     )
                 
                 self.bot.reply_to(message, response, parse_mode='Markdown')
@@ -317,10 +318,10 @@ class MessageHandler(BaseHandler):
                 if user.goal_km > 0:
                     progress = (year_stats['total_km'] / user.goal_km * 100)
                     progress_bar = self._generate_progress_bar(progress)
-                    response += f"🎯 Цель на {current_year}: {user.goal_km:.1f} км\n"
-                    response += f"{progress_bar} {progress:.1f}%\n"
-                    response += f"📊 Пройдено: {year_stats['total_km']:.1f} км\n"
-                    response += f"⭐️ Осталось: {user.goal_km - year_stats['total_km']:.1f} км\n\n"
+                    response += f"🎯 Цель на {current_year}: {user.goal_km:.2f} км\n"
+                    response += f"{progress_bar} {progress:.2f}%\n"
+                    response += f"📊 Пройдено: {year_stats['total_km']:.2f} км\n"
+                    response += f"⭐️ Осталось: {user.goal_km - year_stats['total_km']:.2f} км\n\n"
                 else:
                     response += "🎯 Цель на год не установлена\n\n"
                 
@@ -328,15 +329,15 @@ class MessageHandler(BaseHandler):
                 month_name = calendar.month_name[current_month]
                 response += f"📅 <b>{month_name}</b>\n"
                 response += f"├ Пробежек: {month_stats['runs_count']}\n"
-                response += f"├ Дистанция: {month_stats['total_km']:.1f} км\n"
+                response += f"├ Дистанция: {month_stats['total_km']:.2f} км\n"
                 if month_stats['runs_count'] > 0:
-                    response += f"└ Средняя: {month_stats['avg_km']:.1f} км\n\n"
+                    response += f"└ Средняя: {month_stats['avg_km']:.2f} км\n\n"
                 else:
                     response += f"└ Средняя: 0.0 км\n\n"
                 
                 # Лучшие результаты
                 response += f"🏆 <b>Лучшие результаты</b>\n"
-                response += f"├ Пробежка: {best_stats['best_run']:.1f} км\n"
+                response += f"├ Пробежка: {best_stats['best_run']:.2f} км\n"
                 response += f"└ Всего: {best_stats['total_runs']} пробежек\n"
                 
                 # Создаем клавиатуру
@@ -479,6 +480,7 @@ def main():
         register_stats_handlers(bot)
         register_goal_handlers(bot)
         register_chat_goal_handlers(bot)
+        register_admin_handlers(bot)
         
         # Регистрируем обработчик сброса данных
         reset_handler = ResetHandler(bot)
