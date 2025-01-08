@@ -112,62 +112,97 @@ class AdminHandler(BaseHandler):
 
     def generate_report(self, year: int, month: int) -> str:
         """Генерирует подробный HTML-отчет"""
-        report = f"<b>📊 Сводный отчет за {year} год</b>\n\n"
+        report = (
+            f"<b>📊 СВОДНЫЙ ОТЧЕТ ЗА {year} ГОД</b>\n"
+            f"<pre>━━━━━━━━━━━━━━━━━━━━━━</pre>\n\n"
+        )
         
         # 1. Общая статистика
         total_stats = RunningLog.get_total_stats(year)
-        report += "<b>🌟 Общая статистика</b>\n"
-        report += f"• Всего пробежек: {total_stats['runs_count']}\n"
-        report += f"• Общая дистанция: {float(total_stats['total_km']):.2f} км\n"
-        report += f"• Активных пользователей: {total_stats['users_count']}\n"
+        report += (
+            "<b>🌟 ОБЩАЯ СТАТИСТИКА</b>\n"
+            "<pre>┌──────────────────────┐\n"
+            f"│ Пробежек:     {total_stats['runs_count']:6d} │\n"
+            f"│ Дистанция:  {float(total_stats['total_km']):6.1f} км │\n"
+            f"│ Участников:   {total_stats['users_count']:6d} │\n"
+        )
         if total_stats['runs_count'] > 0:
-            report += f"• Средняя дистанция: {float(total_stats['avg_km']):.2f} км\n"
-        report += "\n"
+            report += f"│ Средняя:     {float(total_stats['avg_km']):6.1f} км │\n"
+        report += "└──────────────────────┘</pre>\n\n"
         
         # 2. Статистика по месяцам
-        report += f"<b>📅 Статистика по месяцам {year} года</b>\n"
+        report += (
+            "<b>📅 СТАТИСТИКА ПО МЕСЯЦАМ</b>\n"
+            "<pre>┌──────────────────────────────┐\n"
+            "│ Месяц  Пробежек   Дистанция  │\n"
+            "├──────────────────────────────┤\n"
+        )
         for m in range(1, month + 1):
             month_stats = RunningLog.get_total_stats(year, m)
-            report += f"\n<b>{m:02d}.{year}</b>\n"
-            report += f"• Пробежек: {month_stats['runs_count']}\n"
-            report += f"• Дистанция: {float(month_stats['total_km']):.2f} км\n"
-            report += f"• Участников: {month_stats['users_count']}\n"
-        report += "\n"
+            report += f"│ {m:02d}.{year}   {month_stats['runs_count']:5d}    {float(month_stats['total_km']):7.1f} км │\n"
+        report += "└──────────────────────────────┘</pre>\n\n"
         
         # 3. Топ пользователей
         top_runners = RunningLog.get_top_runners(year=year, limit=10)
-        report += "<b>🏆 Топ-10 пользователей</b>\n\n"
+        report += (
+            "<b>🏆 ТОП-10 БЕГУНОВ</b>\n"
+            "<pre>┌─────────────────────────────────┐\n"
+            "│ Место  Пробежки  Дист.  Средняя │\n"
+            "├─────────────────────────────────┤\n"
+        )
         for i, runner in enumerate(top_runners, 1):
             user = User.get_by_id(runner['user_id'])
             username = user.username if user else "Unknown"
-            report += f"{i}. {username}\n"
-            report += f"• Дистанция: {float(runner['total_km']):.2f} км\n"
-            report += f"• Пробежек: {runner['runs_count']}\n"
-            report += f"• Средняя: {float(runner['avg_km']):.2f} км\n"
-            report += f"• Лучшая: {float(runner['best_run']):.2f} км\n\n"
+            report += (
+                f"│ {i:2d}. {username[:10]:<10} "
+                f"{runner['runs_count']:3d}   "
+                f"{float(runner['total_km']):5.1f}   "
+                f"{float(runner['avg_km']):5.1f} │\n"
+            )
+        report += "└─────────────────────────────────┘</pre>\n\n"
         
         # 4. Активные челленджи
         challenges = Challenge.get_active_challenges()
-        report += "<b>🎯 Активные челленджи</b>\n\n"
-        for challenge in challenges:
-            total_km = float(challenge.get_total_progress() or 0)
-            participants_count = challenge.get_participants_count()
-            goal_km = float(challenge.goal_km or 0)
-            progress = (total_km / goal_km * 100) if goal_km > 0 else 0
-            
-            report += f"<b>{challenge.title}</b>\n"
-            report += f"• Цель: {goal_km:.2f} км\n"
-            report += f"• Прогресс: {total_km:.2f} км ({progress:.2f}%)\n"
-            report += f"• Участников: {participants_count}\n\n"
+        if challenges:
+            report += (
+                "<b>🎯 АКТИВНЫЕ ЧЕЛЛЕНДЖИ</b>\n"
+                "<pre>┌────────────────────────────────┐\n"
+                "│ Название  Цель  Прогресс  Участ │\n"
+                "├────────────────────────────────┤\n"
+            )
+            for challenge in challenges:
+                total_km = float(challenge.get_total_progress() or 0)
+                participants_count = challenge.get_participants_count()
+                goal_km = float(challenge.goal_km or 0)
+                progress = (total_km / goal_km * 100) if goal_km > 0 else 0
+                
+                title = challenge.title[:10] if challenge.title else "Без имени"
+                report += (
+                    f"│ {title:<10} "
+                    f"{goal_km:4.0f}  "
+                    f"{progress:6.1f}%  "
+                    f"{participants_count:5d} │\n"
+                )
+            report += "└────────────────────────────────┘</pre>\n\n"
         
         # 5. Статистика по чатам
-        report += "<b>💬 Статистика по чатам</b>\n\n"
         chat_stats = RunningLog.get_chat_stats_all(year)
-        for chat in chat_stats:
-            report += f"<b>Чат: {chat['chat_id']}</b>\n"
-            report += f"• Пробежек: {chat['runs_count']}\n"
-            report += f"• Дистанция: {float(chat['total_km']):.2f} км\n"
-            report += f"• Участников: {chat['users_count']}\n\n"
+        if chat_stats:
+            report += (
+                "<b>💬 СТАТИСТИКА ПО ЧАТАМ</b>\n"
+                "<pre>┌───────────────────────────────┐\n"
+                "│ Чат     Пробежки  Дист.  Участ │\n"
+                "├───────────────────────────────┤\n"
+            )
+            for chat in chat_stats:
+                chat_id_short = str(chat['chat_id'])[-6:] # берем последние 6 цифр
+                report += (
+                    f"│ {chat_id_short:<6} "
+                    f"{chat['runs_count']:8d}  "
+                    f"{float(chat['total_km']):5.1f}  "
+                    f"{chat['users_count']:5d} │\n"
+                )
+            report += "└───────────────────────────────┘</pre>\n"
         
         return report
 
