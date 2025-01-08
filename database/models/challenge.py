@@ -41,20 +41,43 @@ class Challenge:
         pass
 
     @staticmethod
-    def get_active_challenges():
+    def get_active_challenges() -> list:
+        """Получает список активных челленджей"""
         conn = get_connection()
         cursor = conn.cursor()
         
-        cursor.execute("""
-            SELECT * FROM challenges
-            WHERE end_date >= date('now')
-            ORDER BY start_date
-        """)
-        
-        challenges = cursor.fetchall()
-        conn.close()
-        
-        return [Challenge(c[0], c[1], c[2], c[3], c[4], c[5], c[6]) for c in challenges] 
+        try:
+            current_date = datetime.now().date().isoformat()
+            
+            query = """
+                SELECT *
+                FROM challenge
+                WHERE start_date <= ?
+                AND end_date >= ?
+                ORDER BY start_date DESC
+            """
+            
+            cursor.execute(query, (current_date, current_date))
+            rows = cursor.fetchall()
+            
+            challenges = []
+            for row in rows:
+                challenge = Challenge(
+                    title=row[1],
+                    goal_km=row[2],
+                    start_date=row[3],
+                    end_date=row[4],
+                    chat_id=row[5],
+                    is_system=bool(row[6])
+                )
+                challenge.challenge_id = row[0]
+                challenges.append(challenge)
+            
+            return challenges
+            
+        finally:
+            cursor.close()
+            conn.close()
 
     @staticmethod
     def get_system_challenge(chat_id, year):

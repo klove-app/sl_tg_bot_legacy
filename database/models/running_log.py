@@ -467,3 +467,83 @@ class RunningLog(Base):
         finally:
             cursor.close()
             conn.close() 
+
+    @staticmethod
+    def get_total_stats(year: int, month: int = None) -> dict:
+        """Получает общую статистику за год или месяц"""
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            if month:
+                query = """
+                    SELECT 
+                        COALESCE(SUM(km), 0) as total_km,
+                        COUNT(*) as runs_count,
+                        COUNT(DISTINCT user_id) as users_count,
+                        COALESCE(AVG(km), 0) as avg_km
+                    FROM running_log
+                    WHERE strftime('%Y', date_added) = ?
+                    AND strftime('%m', date_added) = ?
+                """
+                cursor.execute(query, (str(year), str(month).zfill(2)))
+            else:
+                query = """
+                    SELECT 
+                        COALESCE(SUM(km), 0) as total_km,
+                        COUNT(*) as runs_count,
+                        COUNT(DISTINCT user_id) as users_count,
+                        COALESCE(AVG(km), 0) as avg_km
+                    FROM running_log
+                    WHERE strftime('%Y', date_added) = ?
+                """
+                cursor.execute(query, (str(year),))
+            
+            result = cursor.fetchone()
+            
+            return {
+                'total_km': result[0] or 0,
+                'runs_count': result[1] or 0,
+                'users_count': result[2] or 0,
+                'avg_km': result[3] or 0
+            }
+            
+        finally:
+            cursor.close()
+            conn.close()
+
+    @staticmethod
+    def get_chat_stats_all(year: int) -> list:
+        """Получает статистику по всем чатам за год"""
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            query = """
+                SELECT 
+                    chat_id,
+                    COALESCE(SUM(km), 0) as total_km,
+                    COUNT(*) as runs_count,
+                    COUNT(DISTINCT user_id) as users_count
+                FROM running_log
+                WHERE strftime('%Y', date_added) = ?
+                AND chat_id IS NOT NULL
+                GROUP BY chat_id
+            """
+            
+            cursor.execute(query, (str(year),))
+            results = cursor.fetchall()
+            
+            return [
+                {
+                    'chat_id': row[0],
+                    'total_km': row[1] or 0,
+                    'runs_count': row[2] or 0,
+                    'users_count': row[3] or 0
+                }
+                for row in results
+            ]
+            
+        finally:
+            cursor.close()
+            conn.close() 
