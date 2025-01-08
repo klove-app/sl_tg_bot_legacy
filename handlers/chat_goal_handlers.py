@@ -37,7 +37,7 @@ class ChatGoalHandler(BaseHandler):
             self.handle_manual_chat_goal,
             func=lambda message: (
                 message.reply_to_message is not None and
-                hasattr(message.reply_to_message, 'text') and
+                message.reply_to_message.text is not None and
                 "Введите цель в километрах" in message.reply_to_message.text
             ),
             content_types=['text']
