@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статистика бега</title>
+    
+    <!-- Telegram WebApp -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Chart.js для графиков -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Наши стили и скрипты -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/app.js" defer></script>
+</head>
+<body>
+    <div id="main">
+        <!-- Навигация -->
+        <nav class="tabs">
+            <button class="tab active" data-tab="summary">📊 Общая статистика</button>
+            <button class="tab" data-tab="monthly">📅 По месяцам</button>
+            <button class="tab" data-tab="runners">🏃 Топ бегунов</button>
+            <button class="tab" data-tab="challenges">🎯 Челленджи</button>
+            <button class="tab" data-tab="chats">💬 Чаты</button>
+        </nav>
+
+        <!-- Контент -->
+        <div class="content">
+            <!-- Общая статистика -->
+            <section id="summary" class="tab-content active">
+                <div class="stats-card">
+                    <h2>🌟 Общая статистика</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Пробежек</span>
+                            <span class="stat-value" id="total-runs">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Всего км</span>
+                            <span class="stat-value" id="total-km">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Бегунов</span>
+                            <span class="stat-value" id="total-runners">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Средняя</span>
+                            <span class="stat-value" id="avg-km">-</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Статистика по месяцам -->
+            <section id="monthly" class="tab-content">
+                <div class="chart-container">
+                    <canvas id="monthly-chart"></canvas>
+                </div>
+            </section>
+
+            <!-- Топ бегунов -->
+            <section id="runners" class="tab-content">
+                <div class="runners-list" id="top-runners">
+                    <!-- Будет заполнено через JavaScript -->
+                </div>
+            </section>
+
+            <!-- Челленджи -->
+            <section id="challenges" class="tab-content">
+                <div class="challenges-list" id="active-challenges">
+                    <!-- Будет заполнено через JavaScript -->
+                </div>
+            </section>
+
+            <!-- Статистика по чатам -->
+            <section id="chats" class="tab-content">
+                <div class="chats-list" id="chat-stats">
+                    <!-- Будет заполнено через JavaScript -->
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html> 

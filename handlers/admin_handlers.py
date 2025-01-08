@@ -1,4 +1,4 @@
-from telebot.types import Message
+from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from database.models.running_log import RunningLog
 from handlers.base_handler import BaseHandler
 from datetime import datetime, date
@@ -91,6 +91,43 @@ class AdminHandler(BaseHandler):
                 self.bot.reply_to(message, "❌ У вас нет прав для выполнения этой команды")
                 return
 
+            # Создаем клавиатуру с кнопкой WebApp
+            keyboard = InlineKeyboardMarkup()
+            webapp_btn = InlineKeyboardButton(
+                text="📊 Открыть интерактивный отчет",
+                web_app=WebAppInfo(url="https://your-webapp-url.com")
+            )
+            text_btn = InlineKeyboardButton(
+                text="📝 Текстовый отчет",
+                callback_data="text_report"
+            )
+            keyboard.add(webapp_btn)
+            keyboard.add(text_btn)
+
+            self.bot.reply_to(
+                message,
+                "Выберите формат отчета:",
+                reply_markup=keyboard
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Error in handle_report: {e}")
+            self.bot.reply_to(message, "❌ Произошла ошибка при генерации отчета")
+
+    @bot.callback_query_handler(func=lambda call: call.data == "text_report")
+    def handle_text_report(self, call):
+        """Отправляет текстовый отчет"""
+        try:
+            user_id = str(call.from_user.id)
+            
+            # Проверяем, что команду вызвал администратор
+            if user_id not in ADMIN_IDS:
+                self.bot.answer_callback_query(
+                    call.id,
+                    "❌ У вас нет прав для выполнения этой команды"
+                )
+                return
+
             # Получаем текущий год и месяц
             current_year = datetime.now().year
             current_month = datetime.now().month
@@ -99,16 +136,20 @@ class AdminHandler(BaseHandler):
             report = self.generate_report(current_year, current_month)
             
             # Отправляем отчет
-            self.bot.reply_to(
-                message,
-                report,
+            self.bot.edit_message_text(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                text=report,
                 parse_mode='HTML',
                 disable_web_page_preview=True
             )
             
         except Exception as e:
-            self.logger.error(f"Error in handle_report: {e}")
-            self.bot.reply_to(message, "❌ Произошла ошибка при генерации отчета")
+            self.logger.error(f"Error in handle_text_report: {e}")
+            self.bot.answer_callback_query(
+                call.id,
+                "❌ Произошла ошибка при генерации отчета"
+            )
 
     def generate_report(self, year: int, month: int) -> str:
         """Генерирует подробный HTML-отчет"""
