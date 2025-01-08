@@ -2,7 +2,7 @@ from telebot.types import Message
 from database.models.running_log import RunningLog
 from handlers.base_handler import BaseHandler
 from datetime import datetime, date
-from config.config import ADMIN_USER_IDS
+from config.config import ADMIN_IDS
 from database.db import get_connection
 
 class AdminHandler(BaseHandler):
@@ -13,7 +13,7 @@ class AdminHandler(BaseHandler):
         self.bot.register_message_handler(
             self.handle_delete_test_data,
             commands=['delete_test_data'],
-            func=lambda message: str(message.from_user.id) in ADMIN_USER_IDS
+            func=lambda message: str(message.from_user.id) in ADMIN_IDS
         )
         
         self.logger.info("Admin handlers registered successfully")
@@ -24,7 +24,7 @@ class AdminHandler(BaseHandler):
             user_id = str(message.from_user.id)
             
             # Проверяем, что команду вызвал администратор
-            if user_id not in ADMIN_USER_IDS:
+            if user_id not in ADMIN_IDS:
                 self.bot.reply_to(message, "❌ У вас нет прав для выполнения этой команды")
                 return
             
