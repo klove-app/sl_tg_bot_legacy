@@ -152,7 +152,7 @@ class AdminHandler(BaseHandler):
         for challenge in challenges:
             total_km = challenge.get_total_progress()
             participants_count = challenge.get_participants_count()
-            progress = (total_km / challenge.goal_km * 100) if challenge.goal_km > 0 else 0
+            progress = (total_km / challenge.goal_km * 100) if challenge.goal_km and challenge.goal_km > 0 else 0
             
             report += f"<b>{challenge.title}</b>\n"
             report += f"• Цель: {challenge.goal_km:.2f} км\n"

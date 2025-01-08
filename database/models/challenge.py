@@ -188,7 +188,7 @@ class Challenge:
         
         try:
             # Нормализуем chat_id если он есть
-            normalized_chat_id = str(self.chat_id).replace('-100', '') if self.chat_id else None
+            normalized_chat_id = str(int(float(self.chat_id))).replace('-100', '') if self.chat_id is not None else None
             
             if self.is_system and normalized_chat_id:
                 # Для системного челленджа считаем всех участников чата
@@ -220,7 +220,7 @@ class Challenge:
         
         try:
             # Нормализуем chat_id если он есть
-            normalized_chat_id = str(self.chat_id).replace('-100', '') if self.chat_id else None
+            normalized_chat_id = str(int(float(self.chat_id))).replace('-100', '') if self.chat_id is not None else None
             
             if self.is_system and normalized_chat_id:
                 # Для системного челленджа учитываем все пробежки в чате
