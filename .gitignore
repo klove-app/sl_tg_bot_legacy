@@ -36,7 +36,8 @@ ENV/
 
 # Database
 *.db
-*.sqlite3
+running_bot.db
+data/*.db
 
 # Config files with sensitive data
 config/config.py
