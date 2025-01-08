@@ -228,7 +228,7 @@ class Challenge:
             - Year used in query: {year}
             """)
             
-            return round(total_km, 1) if total_km else 0.0
+            return round(total_km, 2) if total_km else 0.0
             
         except Exception as e:
             print(f"Error in get_total_progress: {e}")
