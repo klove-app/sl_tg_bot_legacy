@@ -51,7 +51,7 @@ class Challenge:
             
             query = """
                 SELECT *
-                FROM challenge
+                FROM challenges
                 WHERE start_date <= ?
                 AND end_date >= ?
                 ORDER BY start_date DESC
