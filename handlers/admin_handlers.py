@@ -118,10 +118,10 @@ class AdminHandler(BaseHandler):
         total_stats = RunningLog.get_total_stats(year)
         report += "<b>🌟 Общая статистика</b>\n"
         report += f"• Всего пробежек: {total_stats['runs_count']}\n"
-        report += f"• Общая дистанция: {total_stats['total_km']:.2f} км\n"
+        report += f"• Общая дистанция: {float(total_stats['total_km']):.2f} км\n"
         report += f"• Активных пользователей: {total_stats['users_count']}\n"
         if total_stats['runs_count'] > 0:
-            report += f"• Средняя дистанция: {total_stats['avg_km']:.2f} км\n"
+            report += f"• Средняя дистанция: {float(total_stats['avg_km']):.2f} км\n"
         report += "\n"
         
         # 2. Статистика по месяцам
@@ -130,7 +130,7 @@ class AdminHandler(BaseHandler):
             month_stats = RunningLog.get_total_stats(year, m)
             report += f"\n<b>{m:02d}.{year}</b>\n"
             report += f"• Пробежек: {month_stats['runs_count']}\n"
-            report += f"• Дистанция: {month_stats['total_km']:.2f} км\n"
+            report += f"• Дистанция: {float(month_stats['total_km']):.2f} км\n"
             report += f"• Участников: {month_stats['users_count']}\n"
         report += "\n"
         
@@ -141,21 +141,22 @@ class AdminHandler(BaseHandler):
             user = User.get_by_id(runner['user_id'])
             username = user.username if user else "Unknown"
             report += f"{i}. {username}\n"
-            report += f"• Дистанция: {runner['total_km']:.2f} км\n"
+            report += f"• Дистанция: {float(runner['total_km']):.2f} км\n"
             report += f"• Пробежек: {runner['runs_count']}\n"
-            report += f"• Средняя: {runner['avg_km']:.2f} км\n"
-            report += f"• Лучшая: {runner['best_run']:.2f} км\n\n"
+            report += f"• Средняя: {float(runner['avg_km']):.2f} км\n"
+            report += f"• Лучшая: {float(runner['best_run']):.2f} км\n\n"
         
         # 4. Активные челленджи
         challenges = Challenge.get_active_challenges()
         report += "<b>🎯 Активные челленджи</b>\n\n"
         for challenge in challenges:
-            total_km = challenge.get_total_progress()
+            total_km = float(challenge.get_total_progress() or 0)
             participants_count = challenge.get_participants_count()
-            progress = (total_km / challenge.goal_km * 100) if challenge.goal_km and challenge.goal_km > 0 else 0
+            goal_km = float(challenge.goal_km or 0)
+            progress = (total_km / goal_km * 100) if goal_km > 0 else 0
             
             report += f"<b>{challenge.title}</b>\n"
-            report += f"• Цель: {challenge.goal_km:.2f} км\n"
+            report += f"• Цель: {goal_km:.2f} км\n"
             report += f"• Прогресс: {total_km:.2f} км ({progress:.2f}%)\n"
             report += f"• Участников: {participants_count}\n\n"
         
@@ -165,7 +166,7 @@ class AdminHandler(BaseHandler):
         for chat in chat_stats:
             report += f"<b>Чат: {chat['chat_id']}</b>\n"
             report += f"• Пробежек: {chat['runs_count']}\n"
-            report += f"• Дистанция: {chat['total_km']:.2f} км\n"
+            report += f"• Дистанция: {float(chat['total_km']):.2f} км\n"
             report += f"• Участников: {chat['users_count']}\n\n"
         
         return report
