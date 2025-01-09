@@ -4,6 +4,8 @@ from database.logger import logger
 from database.models.user import User
 from database.models.challenge import Challenge
 from datetime import datetime
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from handlers.base_handler import BaseHandler
 
 # Словарь для хранения временных данных пользователей
 user_data = {}
@@ -462,3 +464,36 @@ def process_chat_goal_km(message):
     except Exception as e:
         print(f">>> ERROR in process_chat_goal_km: {str(e)}")
         bot.reply_to(message, "❌ Произошла ошибка при установке цели") 
+
+class DonateHandler(BaseHandler):
+    def register(self):
+        self.bot.register_message_handler(
+            self.handle_donate,
+            commands=['donate', 'support']
+        )
+
+    def handle_donate(self, message):
+        """Показывает меню с вариантами донатов"""
+        keyboard = InlineKeyboardMarkup(row_width=2)
+        
+        # Варианты донатов
+        donations = [
+            ("☕️ Кофе (100₽)", "https://yoomoney.ru/to/4100118963809958/100"),
+            ("🎯 Поддержка (300₽)", "https://yoomoney.ru/to/4100118963809958/300"),
+            ("❤️ Спонсор (500₽)", "https://yoomoney.ru/to/4100118963809958/500")
+        ]
+        
+        for title, url in donations:
+            keyboard.add(InlineKeyboardButton(text=title, url=url))
+            
+        keyboard.add(InlineKeyboardButton(
+            "💎 Произвольная сумма",
+            url="https://yoomoney.ru/to/4100118963809958"
+        ))
+        
+        self.bot.reply_to(
+            message,
+            "🤝 Спасибо за желание поддержать проект!\n\n"
+            "💡 Выберите сумму доната или укажите свою:",
+            reply_markup=keyboard
+        ) 
