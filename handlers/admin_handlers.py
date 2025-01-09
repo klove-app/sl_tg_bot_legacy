@@ -1,3 +1,4 @@
+from bot_instance import bot
 from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from database.models.running_log import RunningLog
 from handlers.base_handler import BaseHandler
@@ -22,6 +23,11 @@ class AdminHandler(BaseHandler):
             self.handle_report,
             commands=['report'],
             func=lambda message: str(message.from_user.id) in ADMIN_IDS
+        )
+        
+        self.bot.register_callback_query_handler(
+            self.handle_text_report,
+            func=lambda call: call.data == "text_report"
         )
         
         self.logger.info("Admin handlers registered successfully")
@@ -114,7 +120,6 @@ class AdminHandler(BaseHandler):
             self.logger.error(f"Error in handle_report: {e}")
             self.bot.reply_to(message, "❌ Произошла ошибка при генерации отчета")
 
-    @bot.callback_query_handler(func=lambda call: call.data == "text_report")
     def handle_text_report(self, call):
         """Отправляет текстовый отчет"""
         try:

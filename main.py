@@ -482,7 +482,7 @@ def main():
         register_stats_handlers(bot)
         register_goal_handlers(bot)
         register_chat_goal_handlers(bot)
-        register_admin_handlers(bot)
+        AdminHandler(bot).register()
         ResetHandler(bot).register()
         DonateHandler(bot).register()
         
