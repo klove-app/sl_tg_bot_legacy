@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Инструкция по использованию RunTracker Bot - подробное руководство по всем функциям бота">
+    <meta name="keywords" content="runtracker, инструкция, руководство, как пользоваться">
+    <title>Инструкция | RunTracker Bot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="css/guide.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="logo">
+                <span class="emoji">🏃‍♂️</span>
+                <span>RunTracker</span>
+            </a>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Главная</a>
+                <a href="https://t.me/leamony" class="nav-link">Поддержка</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="guide-header">
+        <div class="container">
+            <h1>Руководство пользователя</h1>
+            <p>Подробная инструкция по использованию RunTracker Bot</p>
+        </div>
+    </div>
+
+    <div class="guide-content">
+        <div class="container">
+            <div class="toc">
+                <div class="toc-header">Содержание</div>
+                <ul>
+                    <li><a href="#start">Начало работы</a></li>
+                    <li><a href="#cabinet">Личный кабинет</a></li>
+                    <li><a href="#recording">Запись пробежек</a></li>
+                    <li><a href="#stats">Статистика</a></li>
+                </ul>
+            </div>
+
+            <div class="content">
+                <section id="start" class="guide-section">
+                    <div class="section-header">
+                        <span class="section-tag">Начало работы</span>
+                        <h2>Как начать использовать бота</h2>
+                    </div>
+                    
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-content">
+                                <h3>1. Найдите бота в Telegram</h3>
+                                <p>Откройте Telegram и найдите @sl_run_bot или нажмите кнопку ниже</p>
+                                <a href="https://t.me/sl_run_bot" class="button">
+                                    <img src="/images/telegram.svg" alt="Telegram" class="button-icon">
+                                    Открыть бота
+                                </a>
+                            </div>
+                            <div class="step-image">
+                                <div class="chat-preview">
+                                    <div class="chat-header">Telegram</div>
+                                    <div class="chat-message">
+                                        <div class="message-text">/start</div>
+                                    </div>
+                                    <div class="chat-message bot">
+                                        <div class="message-text">👋 Привет! Я помогу тебе отслеживать твои пробежки.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-content">
+                                <h3>2. Нажмите кнопку "Start"</h3>
+                                <p>Бот поприветствует вас и предложит установить цель на год</p>
+                            </div>
+                            <div class="step-image">
+                                <div class="chat-preview">
+                                    <div class="chat-message bot">
+                                        <div class="message-text">Давай установим цель на год. Сколько километров хочешь пробежать?</div>
+                                    </div>
+                                    <div class="chat-message">
+                                        <div class="message-text">1000</div>
+                                    </div>
+                                    <div class="chat-message bot">
+                                        <div class="message-text">🎯 Отлично! Цель установлена: 1000 км на 2024 год</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="cabinet" class="guide-section">
+                    <div class="section-header">
+                        <span class="section-tag">Личный кабинет</span>
+                        <h2>Управление настройками</h2>
+                    </div>
+
+                    <div class="feature-list">
+                        <p class="feature-intro">Используйте команду /me для доступа к личному кабинету, где вы можете:</p>
+                        <ul>
+                            <li>
+                                <span class="feature-icon">🎯</span>
+                                <span class="feature-text">Установить или изменить годовую цель</span>
+                            </li>
+                            <li>
+                                <span class="feature-icon">📊</span>
+                                <span class="feature-text">Просмотреть статистику</span>
+                            </li>
+                            <li>
+                                <span class="feature-icon">⚙️</span>
+                                <span class="feature-text">Управлять настройками</span>
+                            </li>
+                            <li>
+                                <span class="feature-icon">✏️</span>
+                                <span class="feature-text">Редактировать последние записи</span>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section id="recording" class="guide-section">
+                    <div class="section-header">
+                        <span class="section-tag">Запись пробежек</span>
+                        <h2>Как записать пробежку</h2>
+                    </div>
+
+                    <div class="recording-methods">
+                        <div class="method-card">
+                            <div class="method-header">
+                                <span class="method-icon">✍️</span>
+                                <h3>Текстовое сообщение</h3>
+                            </div>
+                            <div class="method-content">
+                                <p>Просто отправьте боту дистанцию в километрах</p>
+                                <div class="example">
+                                    <div class="example-label">Примеры:</div>
+                                    <code>5.2</code> или <code>5.2 Утренняя пробежка в парке</code>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="method-card">
+                            <div class="method-header">
+                                <span class="method-icon">📸</span>
+                                <h3>Фото с пробежки</h3>
+                            </div>
+                            <div class="method-content">
+                                <p>Отправьте фото с подписью, указав дистанцию</p>
+                                <div class="example">
+                                    <div class="example-label">Пример подписи:</div>
+                                    <code>5.2 км Отличная погода!</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stats-preview">
+                        <p>После записи пробежки бот автоматически покажет:</p>
+                        <div class="stats-cards">
+                            <div class="preview-card">
+                                <div class="card-icon">✅</div>
+                                <div class="card-text">Подтверждение записи</div>
+                            </div>
+                            <div class="preview-card">
+                                <div class="card-icon">📊</div>
+                                <div class="card-text">Статистику за месяц</div>
+                            </div>
+                            <div class="preview-card">
+                                <div class="card-icon">📈</div>
+                                <div class="card-text">Прогресс к цели</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="stats" class="guide-section">
+                    <div class="section-header">
+                        <span class="section-tag">Статистика</span>
+                        <h2>Просмотр статистики</h2>
+                    </div>
+
+                    <div class="feature-list">
+                        <p class="feature-intro">В личном кабинете (/me) доступна подробная статистика:</p>
+                        <ul>
+                            <li>
+                                <span class="feature-icon">📊</span>
+                                <span class="feature-text">Полная статистика за все время</span>
+                            </li>
+                            <li>
+                                <span class="feature-icon">📅</span>
+                                <span class="feature-text">Детальный анализ по месяцам</span>
+                            </li>
+                            <li>
+                                <span class="feature-icon">🎯</span>
+                                <span class="feature-text">Прогресс к годовой цели</span>
+                            </li>
+                            <li>
+                                <span class="feature-icon">📝</span>
+                                <span class="feature-text">История пробежек</span>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="/">Главная</a>
+                    <a href="https://t.me/leamony">Поддержка</a>
+                    <a href="https://www.buymeacoffee.com/leamony">Поддержать проект</a>
+                </div>
+                <div class="footer-copy">
+                    © 2024 RunTracker Bot. Все права защищены.
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Плавная прокрутка к разделам
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Подсветка активного раздела при скролле
+        const sections = document.querySelectorAll('.guide-section');
+        const tocLinks = document.querySelectorAll('.toc a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 60) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            tocLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').substring(1) === current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
