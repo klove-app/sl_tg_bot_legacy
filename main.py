@@ -26,7 +26,7 @@ from handlers.goal_handlers import register_handlers as register_goal_handlers
 from handlers.base_handler import BaseHandler
 from handlers.chat_goal_handlers import register_handlers as register_chat_goal_handlers
 from handlers.reset_handlers import ResetHandler
-from handlers.admin_handlers import register_handlers as register_admin_handlers
+from handlers.admin_handlers import AdminHandler
 from handlers.donate_handlers import DonateHandler
 
 class MessageHandler(BaseHandler):
