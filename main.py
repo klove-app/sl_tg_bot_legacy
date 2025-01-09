@@ -27,6 +27,7 @@ from handlers.base_handler import BaseHandler
 from handlers.chat_goal_handlers import register_handlers as register_chat_goal_handlers
 from handlers.reset_handlers import ResetHandler
 from handlers.admin_handlers import register_handlers as register_admin_handlers
+from handlers.donate_handlers import DonateHandler
 
 class MessageHandler(BaseHandler):
     def register(self):
@@ -474,6 +475,7 @@ def main():
         logger.info("Database tables created")
         
         # Регистрируем обработчики
+        register_message_handlers(bot)
         register_chat_handlers(bot)
         register_challenge_handlers(bot)
         register_team_handlers(bot)
@@ -481,13 +483,8 @@ def main():
         register_goal_handlers(bot)
         register_chat_goal_handlers(bot)
         register_admin_handlers(bot)
-        
-        # Регистрируем обработчик сброса данных
-        reset_handler = ResetHandler(bot)
-        reset_handler.register()
-        
-        # Регистрируем обработчики сообщений
-        register_message_handlers(bot)
+        ResetHandler(bot).register()
+        DonateHandler(bot).register()
         
         logger.info("Bot handlers registered")
         
