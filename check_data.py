@@ -8,16 +8,14 @@ try:
     # Проверяем данные в таблице users
     cursor.execute('SELECT * FROM users')
     users = cursor.fetchall()
-    print('
-Users in database:')
+    print('\nUsers in database:')
     for user in users:
         print(f'User: {user}')
 
     # Проверяем данные в таблице running_log
     cursor.execute('SELECT * FROM running_log')
     runs = cursor.fetchall()
-    print('
-Runs in database:')
+    print('\nRuns in database:')
     for run in runs:
         print(f'Run: {run}')
 
