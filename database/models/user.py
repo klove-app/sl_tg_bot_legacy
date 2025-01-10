@@ -9,6 +9,7 @@ class User(Base):
     username = Column(String)
     goal_km = Column(Float, default=0)
     is_active = Column(Boolean, default=True)
+    chat_type = Column(String, default='private')  # 'private' или 'group'
 
     # Отношение к пробежкам
     runs = relationship("RunningLog", back_populates="user")
@@ -20,10 +21,10 @@ class User(Base):
         return db.query(cls).filter(cls.user_id == user_id).first()
 
     @classmethod
-    def create(cls, user_id: str, username: str) -> 'User':
+    def create(cls, user_id: str, username: str, chat_type: str = 'private') -> 'User':
         """Создать нового пользователя"""
         db = next(get_db())
-        user = cls(user_id=user_id, username=username)
+        user = cls(user_id=user_id, username=username, chat_type=chat_type)
         db.add(user)
         db.commit()
         db.refresh(user)
@@ -44,4 +45,8 @@ class User(Base):
                 setattr(self, key, value)
         db.add(self)
         db.commit()
-        db.refresh(self) 
+        db.refresh(self)
+
+    def is_private(self) -> bool:
+        """Проверить, является ли пользователь индивидуальным"""
+        return self.chat_type == 'private' 

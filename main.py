@@ -28,6 +28,7 @@ from handlers.chat_goal_handlers import register_handlers as register_chat_goal_
 from handlers.reset_handlers import ResetHandler
 from handlers.admin_handlers import AdminHandler
 from handlers.donate_handlers import DonateHandler
+from handlers import message_handlers, private_handlers
 
 class MessageHandler(BaseHandler):
     def register(self):
@@ -545,6 +546,11 @@ def register_message_handlers(bot):
     """Регистрирует обработчики сообщений"""
     handler = MessageHandler(bot)
     handler.register()
+
+def register_handlers(bot):
+    """Регистрирует все обработчики"""
+    message_handlers.register_handlers(bot)
+    private_handlers.register_handlers(bot)
 
 def main():
     """Основная функция запуска бота"""

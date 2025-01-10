@@ -80,7 +80,7 @@ class RunningLog(Base):
 
     @classmethod
     def get_top_runners(cls, limit: int = 10, year: int = None) -> list:
-        """Получить топ бегунов за год"""
+        """Получить топ бегунов за год (включая всех пользователей)"""
         if year is None:
             year = datetime.now().year
             
@@ -111,6 +111,113 @@ class RunningLog(Base):
             logger.error(f"Error getting top runners: {e}")
             logger.error(f"Full traceback: {traceback.format_exc()}")
             return []
+
+    @classmethod
+    def get_user_global_rank(cls, user_id: str, year: int = None) -> dict:
+        """Получить позицию пользователя в глобальном рейтинге"""
+        if year is None:
+            year = datetime.now().year
+            
+        db = next(get_db())
+        try:
+            # Подзапрос для получения общего километража каждого пользователя
+            subq = db.query(
+                cls.user_id,
+                func.sum(cls.km).label('total_km')
+            ).filter(
+                extract('year', cls.date_added) == year
+            ).group_by(
+                cls.user_id
+            ).subquery()
+            
+            # Получаем ранг пользователя
+            rank_query = db.query(
+                func.row_number().over(
+                    order_by=subq.c.total_km.desc()
+                ).label('rank'),
+                subq.c.user_id,
+                subq.c.total_km
+            ).from_self().filter(
+                subq.c.user_id == user_id
+            ).first()
+            
+            if rank_query:
+                total_users = db.query(
+                    func.count(func.distinct(cls.user_id))
+                ).filter(
+                    extract('year', cls.date_added) == year
+                ).scalar()
+                
+                return {
+                    'rank': rank_query.rank,
+                    'total_users': total_users,
+                    'total_km': float(rank_query.total_km or 0)
+                }
+            return {'rank': 0, 'total_users': 0, 'total_km': 0.0}
+            
+        except Exception as e:
+            logger.error(f"Error getting user global rank: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return {'rank': 0, 'total_users': 0, 'total_km': 0.0}
+
+    @classmethod
+    def get_personal_stats(cls, user_id: str, year: int = None) -> dict:
+        """Получить подробную личную статистику пользователя"""
+        if year is None:
+            year = datetime.now().year
+            
+        db = next(get_db())
+        try:
+            # Базовая статистика
+            base_stats = cls.get_user_stats(user_id, year)
+            
+            # Дополнительная статистика
+            additional_stats = db.query(
+                func.max(cls.km).label('longest_run'),
+                func.min(cls.km).label('shortest_run'),
+                func.avg(cls.km).label('average_run'),
+                func.count(func.distinct(cls.date_added)).label('active_days')
+            ).filter(
+                cls.user_id == user_id,
+                extract('year', cls.date_added) == year
+            ).first()
+            
+            # Статистика по месяцам
+            monthly_stats = db.query(
+                extract('month', cls.date_added).label('month'),
+                func.sum(cls.km).label('monthly_km')
+            ).filter(
+                cls.user_id == user_id,
+                extract('year', cls.date_added) == year
+            ).group_by(
+                extract('month', cls.date_added)
+            ).all()
+            
+            return {
+                **base_stats,
+                'longest_run': float(additional_stats.longest_run or 0),
+                'shortest_run': float(additional_stats.shortest_run or 0),
+                'average_run': float(additional_stats.average_run or 0),
+                'active_days': additional_stats.active_days or 0,
+                'monthly_progress': [
+                    {'month': int(stat.month), 'km': float(stat.monthly_km or 0)}
+                    for stat in monthly_stats
+                ]
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting personal stats: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return {
+                'runs_count': 0,
+                'total_km': 0.0,
+                'avg_km': 0.0,
+                'longest_run': 0.0,
+                'shortest_run': 0.0,
+                'average_run': 0.0,
+                'active_days': 0,
+                'monthly_progress': []
+            }
 
     @classmethod
     def get_user_runs(cls, user_id: str, limit: int = 5) -> List['RunningLog']:
