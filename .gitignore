@@ -24,6 +24,12 @@ ENV/
 # Python
 __pycache__/
 *.py[cod]
+
+*$py.class
+*.so
+.Python
+env/
+
 *.so
 .Python
 build/
@@ -40,4 +46,20 @@ var/
 wheels/
 *.egg-info/
 .installed.cfg
+
+*.egg
+
+
+# Virtual environment
+venv/
+venv311/
+ENV/
+# Database
+*.db
+*.sqlite
+*.sqlite3
+bot.db 
+
+
 *.egg 
+
