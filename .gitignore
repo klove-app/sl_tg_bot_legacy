@@ -46,6 +46,7 @@ var/
 wheels/
 *.egg-info/
 .installed.cfg
+
 *.egg
 
 
@@ -58,4 +59,7 @@ ENV/
 *.sqlite
 *.sqlite3
 bot.db 
+
+
+*.egg 
 
