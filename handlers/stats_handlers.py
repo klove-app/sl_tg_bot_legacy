@@ -190,16 +190,24 @@ class StatsHandler(BaseHandler):
             if user_id is None:
                 user_id = str(message.from_user.id)
             
+            self.logger.info(f"Getting profile for user {user_id}")
+            
             # Используем переданную сессию или создаем новую
             if db is None:
+                self.logger.debug("Creating new database session")
                 db = SessionLocal()
+            else:
+                self.logger.debug("Using existing database session")
             
             try:
                 # Получаем или создаем пользователя
                 user = db.query(User).filter(User.user_id == user_id).first()
+                self.logger.debug(f"Found user in database: {user is not None}")
+                
                 if not user:
                     username = message.from_user.username or message.from_user.first_name
                     chat_type = message.chat.type if message.chat else 'private'
+                    self.logger.info(f"Creating new user: {username}, chat_type: {chat_type}")
                     user = User(user_id=user_id, username=username, chat_type=chat_type)
                     db.add(user)
                     db.commit()
@@ -208,9 +216,17 @@ class StatsHandler(BaseHandler):
                 current_month = datetime.now().month
                 
                 # Получаем статистику
+                self.logger.debug(f"Getting year stats for user {user_id}")
                 year_stats = RunningLog.get_user_stats(user_id, current_year, db=db)
+                self.logger.debug(f"Year stats: {year_stats}")
+                
+                self.logger.debug(f"Getting month stats for user {user_id}")
                 month_stats = RunningLog.get_user_stats(user_id, current_year, current_month, db=db)
+                self.logger.debug(f"Month stats: {month_stats}")
+                
+                self.logger.debug(f"Getting best stats for user {user_id}")
                 best_stats = RunningLog.get_best_stats(user_id, db=db)
+                self.logger.debug(f"Best stats: {best_stats}")
                 
                 # Формируем профиль с HTML-форматированием
                 response = f"<b>👤 Профиль {user.username}</b>\n\n"
@@ -250,6 +266,8 @@ class StatsHandler(BaseHandler):
                 response += f"├ Пробежка: {best_stats['best_run']:.2f} км\n"
                 response += f"└ Всего: {best_stats['total_runs']} пробежек\n"
                 
+                self.logger.debug(f"Generated response: {response}")
+                
                 # Создаем клавиатуру
                 markup = InlineKeyboardMarkup()
                 
@@ -266,10 +284,13 @@ class StatsHandler(BaseHandler):
                     markup.row(InlineKeyboardButton("🎯 Изменить цель", callback_data="set_goal_0"))
                 
                 # Отправляем сообщение с клавиатурой
+                self.logger.info("Sending profile message")
                 self.bot.reply_to(message, response, reply_markup=markup, parse_mode='HTML')
+                self.logger.info("Profile message sent successfully")
                 
             finally:
                 if db is not None:
+                    self.logger.debug("Closing database session")
                     db.close()
                     
         except Exception as e:
@@ -972,6 +993,9 @@ class StatsHandler(BaseHandler):
                 chat_id = str(call.message.chat.id) if call.message.chat.type != 'private' else None
                 chat_type = call.message.chat.type if call.message.chat else 'private'
                 
+                self.logger.info(f"Adding quick run: {km} km for user {user_id}")
+                self.logger.debug(f"Chat info - id: {chat_id}, type: {chat_type}")
+                
                 # Добавляем пробежку
                 if RunningLog.add_entry(
                     user_id=user_id,
@@ -980,14 +1004,22 @@ class StatsHandler(BaseHandler):
                     chat_id=chat_id,
                     chat_type=chat_type
                 ):
+                    self.logger.info("Run entry added successfully")
+                    
                     # Получаем статистику пользователя
+                    self.logger.debug("Getting user information")
                     user = User.get_by_id(user_id)
+                    
+                    self.logger.debug("Getting total km")
                     total_km = RunningLog.get_user_total_km(user_id)
+                    self.logger.debug(f"Total km: {total_km}")
                     
                     response = f"✅ Записана пробежка {km:.2f} км!\n"
                     if user and user.goal_km > 0:
                         progress = (total_km / user.goal_km * 100)
                         response += f"📊 Прогресс: {total_km:.2f} из {user.goal_km:.2f} км ({progress:.2f}%)"
+                    
+                    self.logger.debug(f"Generated response: {response}")
                     
                     self.bot.answer_callback_query(
                         call.id,
@@ -995,8 +1027,10 @@ class StatsHandler(BaseHandler):
                     )
                     
                     # Возвращаемся к профилю
+                    self.logger.info("Updating profile view")
                     self.handle_profile(call.message)
                 else:
+                    self.logger.error("Failed to add run entry")
                     self.bot.answer_callback_query(
                         call.id,
                         "❌ Не удалось сохранить пробежку"

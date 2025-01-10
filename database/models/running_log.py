@@ -24,10 +24,14 @@ class RunningLog(Base):
     @classmethod
     def add_entry(cls, user_id: str, km: float, date_added: datetime.date, notes: str = None, chat_id: str = None, chat_type: str = None, db = None) -> bool:
         """Добавить новую запись о пробежке"""
+        logger.info(f"Adding new run entry for user {user_id}: {km} km, chat_id: {chat_id}, chat_type: {chat_type}")
+        
         if db is None:
+            logger.debug("Creating new database session")
             db = SessionLocal()
             should_close = True
         else:
+            logger.debug("Using existing database session")
             should_close = False
             
         try:
@@ -44,24 +48,35 @@ class RunningLog(Base):
                 chat_id=chat_id,
                 chat_type=chat_type
             )
+            logger.debug(f"Created log entry: {log_entry.__dict__}")
+            
             db.add(log_entry)
+            logger.debug("Added log entry to session")
+            
             db.commit()
+            logger.info(f"Successfully committed run entry for user {user_id}")
             return True
         except Exception as e:
             logger.error(f"Error adding run entry: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             db.rollback()
             return False
         finally:
             if should_close:
+                logger.debug("Closing database session")
                 db.close()
 
     @classmethod
     def get_user_total_km(cls, user_id: str, chat_type: str = None, db = None) -> float:
         """Получить общую дистанцию пользователя за текущий год"""
+        logger.info(f"Getting total km for user {user_id}, chat_type: {chat_type}")
+        
         if db is None:
+            logger.debug("Creating new database session")
             db = SessionLocal()
             should_close = True
         else:
+            logger.debug("Using existing database session")
             should_close = False
             
         try:
@@ -75,14 +90,18 @@ class RunningLog(Base):
             
             if chat_type:
                 query = query.filter(cls.chat_type == chat_type)
-                
+            
+            logger.debug(f"Executing query: {query}")
             result = query.scalar()
+            logger.info(f"Total km for user {user_id}: {result or 0.0}")
             return result or 0.0
         except Exception as e:
             logger.error(f"Error getting total km: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             return 0.0
         finally:
             if should_close:
+                logger.debug("Closing database session")
                 db.close()
 
     @classmethod
@@ -241,13 +260,18 @@ class RunningLog(Base):
     @classmethod
     def get_user_stats(cls, user_id: str, year: int, month: int = None, db = None):
         """Получить статистику пользователя за год или месяц"""
+        logger.info(f"Getting stats for user {user_id}, year: {year}, month: {month}")
+        
         if db is None:
+            logger.debug("Creating new database session")
             db = SessionLocal()
             should_close = True
         else:
+            logger.debug("Using existing database session")
             should_close = False
             
         try:
+            # Базовый запрос
             query = db.query(
                 func.count().label('runs_count'),
                 func.sum(cls.km).label('total_km'),
@@ -257,39 +281,48 @@ class RunningLog(Base):
                 extract('year', cls.date_added) == year
             )
             
-            if month is not None:
+            # Добавляем фильтр по месяцу, если указан
+            if month:
                 query = query.filter(extract('month', cls.date_added) == month)
-                
+            
+            logger.debug(f"Executing query: {query}")
             result = query.first()
             
-            # Получаем статистику по типам чатов
-            chat_stats = db.query(
+            # Формируем статистику по типам чатов
+            chat_stats_query = db.query(
                 cls.chat_type,
                 func.count().label('runs_count'),
                 func.sum(cls.km).label('total_km'),
                 func.avg(cls.km).label('avg_km')
             ).filter(
                 cls.user_id == user_id,
-                extract('year', cls.date_added) == year
-            ).group_by(
-                cls.chat_type
-            ).all()
+                extract('year', cls.date_added) == year,
+                cls.chat_type.isnot(None)
+            )
             
-            chat_stats_dict = {}
-            for stat in chat_stats:
-                if stat.chat_type:
-                    chat_stats_dict[stat.chat_type] = {
+            if month:
+                chat_stats_query = chat_stats_query.filter(extract('month', cls.date_added) == month)
+            
+            chat_stats_query = chat_stats_query.group_by(cls.chat_type)
+            logger.debug(f"Executing chat stats query: {chat_stats_query}")
+            chat_stats = chat_stats_query.all()
+            
+            stats = {
+                'runs_count': result.runs_count or 0,
+                'total_km': float(result.total_km or 0),
+                'avg_km': float(result.avg_km or 0),
+                'chat_stats': {
+                    stat.chat_type: {
                         'runs_count': stat.runs_count,
                         'total_km': float(stat.total_km or 0),
                         'avg_km': float(stat.avg_km or 0)
-                    }
-            
-            return {
-                'runs_count': result.runs_count if result else 0,
-                'total_km': float(result.total_km or 0),
-                'avg_km': float(result.avg_km or 0),
-                'chat_stats': chat_stats_dict
+                    } for stat in chat_stats
+                }
             }
+            
+            logger.info(f"Stats for user {user_id}: {stats}")
+            return stats
+            
         except Exception as e:
             logger.error(f"Error getting user stats: {e}")
             logger.error(f"Full traceback: {traceback.format_exc()}")
@@ -301,6 +334,7 @@ class RunningLog(Base):
             }
         finally:
             if should_close:
+                logger.debug("Closing database session")
                 db.close()
 
     @classmethod
