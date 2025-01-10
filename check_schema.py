@@ -1,5 +1,11 @@
 import sqlite3
+import os
 from config.config import DATABASE_NAME
+
+# Проверяем существование директории
+db_dir = os.path.dirname(DATABASE_NAME)
+if not os.path.exists(db_dir):
+    os.makedirs(db_dir)
 
 conn = sqlite3.connect(DATABASE_NAME)
 cursor = conn.cursor()
@@ -18,6 +24,10 @@ try:
     print('\nTables in database:')
     for table in tables:
         print(f'Table: {table[0]}')
+
+    # Показываем размер базы данных
+    print(f'\nDatabase file size: {os.path.getsize(DATABASE_NAME)} bytes')
+    print(f'Last modified: {os.path.getmtime(DATABASE_NAME)}')
 
 except sqlite3.OperationalError as e:
     print(f'Error: {e}')

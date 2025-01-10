@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - RunTracker Bot</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="logo">RunTracker Bot</a>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Главная</a>
+                <a href="/login" class="nav-link active">Войти</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="login-wrapper">
+        <div class="container">
+            <div class="login-content">
+                <h1>Вход в личный кабинет</h1>
+                <p class="login-description">Войдите через Telegram, чтобы получить доступ к вашей статистике и настройкам.</p>
+                <div class="login-box">
+                    <!-- Здесь будет виджет Telegram Login -->
+                    <script async src="https://telegram.org/js/telegram-widget.js?22" 
+                            data-telegram-login="YOUR_BOT_NAME" 
+                            data-size="large" 
+                            data-auth-url="https://runconnect.app/auth/telegram" 
+                            data-request-access="write">
+                    </script>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2024 RunTracker Bot. Все права защищены.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html> 

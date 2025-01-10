@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RunTracker Bot - Assistant Intelligent pour la Course</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .language-switcher {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 1rem;
+            padding: 0.25rem;
+            background: rgba(99, 91, 255, 0.1);
+            border-radius: 2rem;
+        }
+        .lang-link {
+            padding: 0.25rem 0.5rem;
+            text-decoration: none;
+            border-radius: 1rem;
+            font-size: 0.9em;
+        }
+        .lang-link.active {
+            background: #635BFF;
+            color: white;
+        }
+        .lang-link:not(.active) {
+            opacity: 0.7;
+        }
+        .lang-link:not(.active):hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/fr" class="logo">
+                <img src="../images/telegram.svg" alt="Telegram" class="button-icon">
+                RunTracker Bot
+            </a>
+            <div class="nav-links">
+                <a href="#for-who" class="nav-link">Pour Qui</a>
+                <a href="#features" class="nav-link">Fonctionnalités</a>
+                <a href="#examples" class="nav-link">Exemples</a>
+                <a href="../docs/fr/user_guide.html" class="nav-link">Guide</a>
+                <a href="#donate" class="nav-link">Soutenir</a>
+                <div class="language-switcher">
+                    <a href="/" class="lang-link">🇷🇺</a>
+                    <a href="/en" class="lang-link">🇬🇧</a>
+                    <a href="/fr" class="lang-link active">🇫🇷</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero-wrapper">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Assistant Intelligent pour les Communautés de Course</h1>
+                <p class="hero-description">Motivez les participants, organisez des défis et suivez les progrès de toute votre communauté avec RunTracker Bot</p>
+                <div class="cta-group">
+                    <a href="https://t.me/sl_run_bot" class="cta-button primary">
+                        <img src="../images/telegram.svg" alt="Telegram" class="button-icon">
+                        Commencer à Courir
+                    </a>
+                    <a href="#for-who" class="cta-button secondary">
+                        En Savoir Plus
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="for-who" class="section for-who">
+        <div class="container">
+            <h2 class="section-title">Pour Qui Est-ce ?</h2>
+            <p class="section-description">RunTracker Bot est un outil spécialisé pour les communautés de course sur Telegram qui aide à maintenir la motivation et à suivre les progrès des participants</p>
+            <div class="audience-grid">
+                <div class="audience-card">
+                    <div class="audience-icon">
+                        <img src="../images/icon-community.svg" alt="Pour les Communautés" width="48" height="48">
+                    </div>
+                    <h3 class="audience-title">Pour les Communautés de Course</h3>
+                    <p class="audience-description">Créez des défis, suivez l'activité des participants et maintenez la motivation dans votre chat de course.</p>
+                    <a href="https://t.me/IvanAKazakov" class="cta-button primary">Ajouter au Chat</a>
+                </div>
+                <div class="audience-card">
+                    <div class="audience-icon">
+                        <img src="../images/icon-target.svg" alt="Pour les Coureurs" width="48" height="48">
+                    </div>
+                    <h3 class="audience-title">Pour les Coureurs</h3>
+                    <p class="audience-description">Participez à des défis, rivalisez avec d'autres coureurs et recevez la motivation de la communauté.</p>
+                    <a href="https://t.me/sl_run_bot" class="cta-button secondary">Rejoindre</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" class="section features">
+        <div class="container">
+            <h2 class="section-title">Fonctionnalités</h2>
+            <p class="section-description">Tous les outils nécessaires pour maintenir l'activité et la motivation dans votre communauté de course</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <img src="../images/icon-community.svg" alt="Communauté" width="48" height="48">
+                    </div>
+                    <h3 class="feature-title">Défis et Compétitions</h3>
+                    <p class="feature-description">Créez des défis de groupe et des compétitions pour maintenir la motivation des participants</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <img src="../images/icon-stats.svg" alt="Statistiques" width="48" height="48">
+                    </div>
+                    <h3 class="feature-title">Statistiques de Groupe</h3>
+                    <p class="feature-description">Suivez l'activité de toute la communauté et les progrès de chaque participant</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <img src="../images/icon-target.svg" alt="Objectifs" width="48" height="48">
+                    </div>
+                    <h3 class="feature-title">Motivation et Objectifs</h3>
+                    <p class="feature-description">Aidez les participants à fixer des objectifs et maintenez leur motivation grâce à un entraînement régulier</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="examples" class="section examples">
+        <div class="container">
+            <h2 class="section-title">Comment Ça Marche</h2>
+            <p class="section-description">Interface simple et pratique pour enregistrer et analyser vos courses</p>
+            <div class="example-grid">
+                <div class="example-card">
+                    <img src="../images/example-1.png" alt="Enregistrement d'une Course" class="example-image">
+                    <div class="example-content">
+                        <h3 class="example-title">Enregistrement d'une Course</h3>
+                        <p>Enregistrez facilement vos courses via l'interface pratique du bot</p>
+                    </div>
+                </div>
+                <div class="example-card">
+                    <img src="../images/example-2.png" alt="Statistiques" class="example-image">
+                    <div class="example-content">
+                        <h3 class="example-title">Statistiques</h3>
+                        <p>Obtenez des statistiques détaillées sur vos séances d'entraînement</p>
+                    </div>
+                </div>
+                <div class="example-card">
+                    <img src="../images/example-3.png" alt="Rapports" class="example-image">
+                    <div class="example-content">
+                        <h3 class="example-title">Rapports</h3>
+                        <p>Analysez vos progrès avec des rapports détaillés</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="testimonials" class="section testimonials">
+        <div class="container">
+            <h2 class="section-title">Témoignages</h2>
+            <p class="section-description">Ce que nos utilisateurs disent de RunTracker Bot</p>
+            <div class="testimonial-grid">
+                <div class="testimonial-card">
+                    <p class="testimonial-text">
+                        "Super bot ! Aide à suivre les progrès et motive à courir régulièrement. J'aime particulièrement la fonction statistiques."
+                    </p>
+                    <div class="testimonial-author">
+                        <img src="../images/avatar-1.jpg" alt="Anna" class="author-avatar">
+                        <div>
+                            <div class="author-name">Anna</div>
+                            <div class="author-title">Passionnée de Course</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <p class="testimonial-text">
+                        "J'utilise le bot pour gérer ma communauté de course. C'est très pratique pour suivre l'activité des participants et organiser des défis."
+                    </p>
+                    <div class="testimonial-author">
+                        <img src="../images/avatar-2.jpg" alt="Michel" class="author-avatar">
+                        <div>
+                            <div class="author-name">Michel</div>
+                            <div class="author-title">Administrateur de Club de Course</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="donate" class="section donate-section">
+        <div class="container">
+            <div class="donate-content">
+                <h2 class="section-title donate-title">Soutenez le Projet</h2>
+                <p class="section-description donate-description">
+                    Votre soutien nous aide à développer le bot et à ajouter de nouvelles fonctionnalités. 
+                    Tous les fonds sont utilisés pour les coûts des serveurs et le développement de nouvelles fonctionnalités.
+                </p>
+                <a href="https://yoomoney.ru/to/4100118963809958" class="donate-button">
+                    <span>Soutenir le Projet</span>
+                    <span>→</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-column">
+                    <h3>RunTracker Bot</h3>
+                    <ul class="footer-links">
+                        <li><a href="#for-who">Pour Qui</a></li>
+                        <li><a href="#features">Fonctionnalités</a></li>
+                        <li><a href="#examples">Exemples</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h3>Ressources</h3>
+                    <ul class="footer-links">
+                        <li><a href="../docs/fr/user_guide.html">Guide Utilisateur</a></li>
+                        <li><a href="../docs/fr/documentation.html">Documentation Technique</a></li>
+                        <li><a href="#donate">Soutenir le Projet</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h3>Contact</h3>
+                    <ul class="footer-links">
+                        <li><a href="https://t.me/sl_run_bot">Bot Telegram</a></li>
+                        <li><a href="https://t.me/IvanAKazakov">Admin Telegram</a></li>
+                        <li><a href="https://github.com/klove-app/sl_tg_bot">GitHub</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 RunTracker Bot. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html> 
