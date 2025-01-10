@@ -52,13 +52,14 @@ def add_missing_columns():
             logger.info("Добавлена колонка goal_km в таблицу users")
             
         # Проверяем наличие колонки is_active в таблице users
-        cursor.execute("PRAGMA table_info(users)")
-        columns = [column[1] for column in cursor.fetchall()]
-        
-        # Добавляем колонку is_active, если её нет
         if 'is_active' not in columns:
             cursor.execute('ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1')
             logger.info("Добавлена колонка is_active в таблицу users")
+            
+        # Проверяем наличие колонки chat_type в таблице users
+        if 'chat_type' not in columns:
+            cursor.execute('ALTER TABLE users ADD COLUMN chat_type TEXT DEFAULT "group"')
+            logger.info("Добавлена колонка chat_type в таблицу users")
             
         # Проверяем наличие колонки chat_id в таблице challenges
         cursor.execute("PRAGMA table_info(challenges)")
