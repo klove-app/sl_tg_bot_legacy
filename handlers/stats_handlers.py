@@ -199,7 +199,8 @@ class StatsHandler(BaseHandler):
                 user = db.query(User).filter(User.user_id == user_id).first()
                 if not user:
                     username = message.from_user.username or message.from_user.first_name
-                    user = User(user_id=user_id, username=username)
+                    chat_type = message.chat.type if message.chat else 'private'
+                    user = User(user_id=user_id, username=username, chat_type=chat_type)
                     db.add(user)
                     db.commit()
                 
@@ -234,6 +235,15 @@ class StatsHandler(BaseHandler):
                     response += f"└ Средняя: {month_stats['avg_km']:.2f} км\n\n"
                 else:
                     response += f"└ Средняя: 0.0 км\n\n"
+                
+                # Статистика по типам чатов
+                if year_stats.get('chat_stats'):
+                    response += f"📊 <b>Статистика по чатам</b>\n"
+                    for chat_type, stats in year_stats['chat_stats'].items():
+                        response += f"<b>{chat_type.capitalize()}</b>\n"
+                        response += f"├ Пробежек: {stats['runs_count']}\n"
+                        response += f"├ Дистанция: {stats['total_km']:.2f} км\n"
+                        response += f"└ Средняя: {stats['avg_km']:.2f} км\n\n"
                 
                 # Лучшие результаты
                 response += f"🏆 <b>Лучшие результаты</b>\n"
@@ -310,12 +320,27 @@ class StatsHandler(BaseHandler):
                 article += f"✨ Текущий прогресс: {progress:.2f}%\n"
                 article += f"📊 Осталось: {user.goal_km - year_stats['total_km']:.2f} км\n"
             
+            # Статистика по типам чатов
+            if year_stats.get('chat_stats'):
+                article += f"\n<b>Статистика по типам чатов</b>\n"
+                for chat_type, stats in year_stats['chat_stats'].items():
+                    article += f"\n{chat_type.capitalize()}\n"
+                    article += f"├ Количество пробежек: {stats['runs_count']}\n"
+                    article += f"├ Общая дистанция: {stats['total_km']:.2f} км\n"
+                    article += f"└ Средняя дистанция: {stats['avg_km']:.2f} км\n"
+            
             # Месячная статистика
             article += f"\n<b>Статистика за {month_name}</b>\n"
             article += f"🏃‍♂️ Количество пробежек: {month_stats['runs_count']}\n"
             article += f"📏 Общая дистанция: {month_stats['total_km']:.2f} км\n"
             if month_stats['runs_count'] > 0:
                 article += f"📈 Средняя дистанция: {month_stats['avg_km']:.2f} км\n"
+            
+                # Статистика по типам чатов за месяц
+                if month_stats.get('chat_stats'):
+                    article += f"\nПо типам чатов:\n"
+                    for chat_type, stats in month_stats['chat_stats'].items():
+                        article += f"{chat_type.capitalize()}: {stats['runs_count']} пробежек, {stats['total_km']:.2f} км\n"
             
             # Лучшие показатели
             article += f"\n<b>Лучшие показатели за все время</b>\n"
@@ -945,13 +970,15 @@ class StatsHandler(BaseHandler):
                 km = float(call.data.split('_')[2])
                 user_id = str(call.from_user.id)
                 chat_id = str(call.message.chat.id) if call.message.chat.type != 'private' else None
+                chat_type = call.message.chat.type if call.message.chat else 'private'
                 
                 # Добавляем пробежку
                 if RunningLog.add_entry(
                     user_id=user_id,
                     km=km,
                     date_added=datetime.now().date(),
-                    chat_id=chat_id
+                    chat_id=chat_id,
+                    chat_type=chat_type
                 ):
                     # Получаем статистику пользователя
                     user = User.get_by_id(user_id)

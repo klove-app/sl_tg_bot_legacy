@@ -36,12 +36,50 @@ def update_existing_runs_chat_id():
     finally:
         conn.close()
 
-def add_missing_columns():
-    """Безопасное добавление отсутствующих колонок в существующие таблицы"""
+def update_existing_runs_chat_type():
+    """Обновляет chat_type для существующих записей о пробежках"""
     conn = get_connection()
     cursor = conn.cursor()
     
     try:
+        # Обновляем chat_type для всех записей
+        cursor.execute("""
+            UPDATE running_log 
+            SET chat_type = CASE
+                WHEN chat_id IS NULL THEN 'private'
+                ELSE 'group'
+            END
+            WHERE chat_type IS NULL
+        """)
+        
+        affected_rows = cursor.rowcount
+        conn.commit()
+        logger.info(f"Chat_type успешно обновлен для {affected_rows} существующих записей")
+        
+    except Exception as e:
+        logger.error(f"Ошибка при обновлении chat_type: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
+
+def add_missing_columns():
+    """Добавляет недостающие колонки в таблицы"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Проверяем наличие колонки chat_type в таблице running_log
+        cursor.execute("PRAGMA table_info(running_log)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        # Добавляем колонку chat_type в running_log, если её нет
+        if 'chat_type' not in columns:
+            cursor.execute('ALTER TABLE running_log ADD COLUMN chat_type TEXT')
+            logger.info("Добавлена колонка chat_type в таблицу running_log")
+            
+            # После добавления колонки обновляем существующие записи
+            update_existing_runs_chat_type()
+        
         # Проверяем наличие колонки goal_km в таблице users
         cursor.execute("PRAGMA table_info(users)")
         columns = [column[1] for column in cursor.fetchall()]
