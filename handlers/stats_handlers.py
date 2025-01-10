@@ -112,7 +112,6 @@ class StatsHandler(BaseHandler):
             
             response += f"\n🏆 Лучшие показатели:\n"
             response += f"💪 Лучшая пробежка: {best_stats['best_run']:.2f} км\n"
-            response += f"� Всего пробежек: {best_stats['total_runs']}\n"
             response += f"🌟 Общая дистанция: {best_stats['total_km']:.2f} км"
 
             self.logger.info(f"Sending response: {response}")
@@ -194,10 +193,7 @@ class StatsHandler(BaseHandler):
             # Используем переданную сессию или создаем новую
             if db is None:
                 db = SessionLocal()
-                should_close = True
-            else:
-                should_close = False
-                
+            
             try:
                 # Получаем или создаем пользователя
                 user = db.query(User).filter(User.user_id == user_id).first()
@@ -249,55 +245,27 @@ class StatsHandler(BaseHandler):
                 
                 # Основные действия
                 markup.row(
-                    InlineKeyboardButton("📝 Новая пробежка", callback_data="new_run"),
-                    InlineKeyboardButton("🎯 Изменить цель", callback_data="set_goal_custom")
+                    InlineKeyboardButton("📝 Подробная статистика", callback_data="show_detailed_stats"),
+                    InlineKeyboardButton("✏️ Редактировать пробежки", callback_data="edit_runs")
                 )
                 
-                # Дополнительные действия
-                markup.row(
-                    InlineKeyboardButton("📊 Статистика", callback_data="show_detailed_stats"),
-                    InlineKeyboardButton("✏️ История", callback_data="edit_runs")
-                )
+                # Кнопка установки цели
+                if user.goal_km == 0:
+                    markup.row(InlineKeyboardButton("🎯 Установить цель", callback_data="set_goal_0"))
+                else:
+                    markup.row(InlineKeyboardButton("🎯 Изменить цель", callback_data="set_goal_0"))
                 
-                # Отправляем сообщение
-                try:
-                    if hasattr(message, 'message_id') and not message.text:
-                        # Если это callback query, редактируем существующее сообщение
-                        self.bot.edit_message_text(
-                            chat_id=message.chat.id,
-                            message_id=message.message_id,
-                            text=response,
-                            reply_markup=markup,
-                            parse_mode='HTML'
-                        )
-                    else:
-                        # Если это новое сообщение или команда, отправляем новое
-                        self.bot.send_message(
-                            chat_id=message.chat.id,
-                            text=response,
-                            reply_markup=markup,
-                            parse_mode='HTML'
-                        )
-                except ApiTelegramException as e:
-                    if "message is not modified" not in str(e):
-                        raise
-                    
+                # Отправляем сообщение с клавиатурой
+                self.bot.reply_to(message, response, reply_markup=markup, parse_mode='HTML')
+                
             finally:
-                if should_close:
+                if db is not None:
                     db.close()
-            
+                    
         except Exception as e:
             self.logger.error(f"Error in handle_profile: {e}")
             self.logger.error(f"Full traceback: {traceback.format_exc()}")
-            error_message = "❌ Произошла ошибка при получении профиля"
-            if hasattr(message, 'message_id') and not message.text:
-                self.bot.edit_message_text(
-                    chat_id=message.chat.id,
-                    message_id=message.message_id,
-                    text=error_message
-                )
-            else:
-                self.bot.reply_to(message, error_message)
+            self.bot.reply_to(message, "❌ Произошла ошибка при получении профиля")
 
     def _generate_progress_bar(self, percentage: float, length: int = 10) -> str:
         """Генерирует прогресс-бар"""

@@ -249,37 +249,28 @@ class RunningLog(Base):
                 cls.user_id == user_id,
                 extract('year', cls.date_added) == year
             )
-
-            if month:
+            
+            if month is not None:
                 query = query.filter(extract('month', cls.date_added) == month)
-
+                
             result = query.first()
             
-            # Проверяем, что результаты не None
-            runs_count = result[0] if result[0] is not None else 0
-            total_km = float(result[1]) if result[1] is not None else 0.0
-            avg_km = float(result[2]) if result[2] is not None else 0.0
-            
             return {
-                'runs_count': runs_count,
-                'total_km': total_km,
-                'avg_km': avg_km
+                'runs_count': result.runs_count if result else 0,
+                'total_km': float(result.total_km or 0),
+                'avg_km': float(result.avg_km or 0)
             }
         except Exception as e:
             logger.error(f"Error getting user stats: {e}")
             logger.error(f"Full traceback: {traceback.format_exc()}")
-            return {
-                'runs_count': 0,
-                'total_km': 0.0,
-                'avg_km': 0.0
-            }
+            return {'runs_count': 0, 'total_km': 0.0, 'avg_km': 0.0}
         finally:
             if should_close:
                 db.close()
 
     @classmethod
     def get_best_stats(cls, user_id: str, db = None):
-        """Получить лучшие показатели пользователя за текущий год"""
+        """Получить лучшие показатели пользователя"""
         if db is None:
             db = SessionLocal()
             should_close = True
@@ -287,35 +278,23 @@ class RunningLog(Base):
             should_close = False
             
         try:
-            current_year = datetime.now().year
             result = db.query(
                 func.max(cls.km).label('best_run'),
                 func.count().label('total_runs'),
                 func.sum(cls.km).label('total_km')
             ).filter(
-                cls.user_id == user_id,
-                extract('year', cls.date_added) == current_year
+                cls.user_id == user_id
             ).first()
-
-            if not result:
-                return {
-                    'best_run': 0.0,
-                    'total_runs': 0,
-                    'total_km': 0.0
-                }
-
+            
             return {
-                'best_run': float(result[0] or 0),
-                'total_runs': result[1] or 0,
-                'total_km': float(result[2] or 0)
+                'best_run': float(result.best_run or 0),
+                'total_runs': result.total_runs or 0,
+                'total_km': float(result.total_km or 0)
             }
         except Exception as e:
             logger.error(f"Error getting best stats: {e}")
-            return {
-                'best_run': 0.0,
-                'total_runs': 0,
-                'total_km': 0.0
-            }
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return {'best_run': 0.0, 'total_runs': 0, 'total_km': 0.0}
         finally:
             if should_close:
                 db.close()
