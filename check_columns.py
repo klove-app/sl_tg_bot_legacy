@@ -8,8 +8,7 @@ try:
     # Получаем структуру таблицы users
     cursor.execute('PRAGMA table_info(users)')
     columns = cursor.fetchall()
-    print('
-Columns in users table:')
+    print('Columns in users table:')
     for i, col in enumerate(columns):
         print(f'{i}. {col[1]}: {col[2]} (default: {col[4]})')
 
