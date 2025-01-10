@@ -13,13 +13,25 @@ website/
 *.sqlite
 *.sqlite3
 
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+.env/
+.ENV/
+
 # Python
 __pycache__/
 *.py[cod]
+
 *$py.class
 *.so
 .Python
 env/
+
+*.so
+.Python
 build/
 develop-eggs/
 dist/
@@ -36,7 +48,14 @@ wheels/
 .installed.cfg
 *.egg
 
+
 # Virtual environment
 venv/
 venv311/
 ENV/
+# Database
+*.db
+*.sqlite
+*.sqlite3
+bot.db 
+
