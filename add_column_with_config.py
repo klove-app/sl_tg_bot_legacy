@@ -14,18 +14,15 @@ try:
 
     # Проверяем, есть ли уже колонка chat_type
     if 'chat_type' not in [col[1] for col in columns]:
-        print('
-Adding chat_type column...')
+        print('\nAdding chat_type column...')
         cursor.execute('ALTER TABLE users ADD COLUMN chat_type VARCHAR DEFAULT "group"')
         conn.commit()
         print('Column added successfully')
     else:
-        print('
-Column chat_type already exists')
+        print('\nColumn chat_type already exists')
 
     # Проверяем структуру после изменений
-    print('
-Updated table structure:')
+    print('\nUpdated table structure:')
     cursor.execute('PRAGMA table_info(users)')
     columns = cursor.fetchall()
     for col in columns:
