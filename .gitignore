@@ -6,6 +6,12 @@ dist/
 *.log
 .cache/
 .netlify/
+website/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
 
 # Virtual Environment
 venv/
@@ -34,10 +40,4 @@ var/
 wheels/
 *.egg-info/
 .installed.cfg
-*.egg
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-bot.db 
+*.egg 
