@@ -3,13 +3,14 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 from database.logger import logger
+from config.config import DATABASE_NAME, DATABASE_URL
 
 # Получаем путь к базе данных
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'bot.db')
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), DATABASE_NAME)
 logger.info(f"Database path: {DB_PATH}")
 
 # Создаем URL для подключения к базе данных
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
+SQLALCHEMY_DATABASE_URL = DATABASE_URL
 logger.info(f"Database URL: {SQLALCHEMY_DATABASE_URL}")
 
 # Создаем движок базы данных
