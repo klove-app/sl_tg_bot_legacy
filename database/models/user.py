@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Boolean
+from sqlalchemy import Column, String, Float, Boolean, REAL
 from sqlalchemy.orm import Session, relationship
 from database.base import Base, get_db
 
@@ -7,9 +7,11 @@ class User(Base):
 
     user_id = Column(String, primary_key=True, index=True)
     username = Column(String)
+    yearly_goal = Column(REAL, nullable=True)
+    yearly_progress = Column(REAL, nullable=True)
     goal_km = Column(Float, default=0)
     is_active = Column(Boolean, default=True)
-    chat_type = Column(String, default='private')  # 'private' или 'group'
+    chat_type = Column(String, default='group')  # 'private' или 'group'
 
     # Отношение к пробежкам
     runs = relationship("RunningLog", back_populates="user")
@@ -21,7 +23,7 @@ class User(Base):
         return db.query(cls).filter(cls.user_id == user_id).first()
 
     @classmethod
-    def create(cls, user_id: str, username: str, chat_type: str = 'private') -> 'User':
+    def create(cls, user_id: str, username: str, chat_type: str = 'group') -> 'User':
         """Создать нового пользователя"""
         db = next(get_db())
         user = cls(user_id=user_id, username=username, chat_type=chat_type)
