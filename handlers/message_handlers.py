@@ -161,14 +161,15 @@ class MessageHandler(BaseHandler):
             # Генерируем изображение для любой дистанции
             self.logger.info("=== Starting image generation ===")
             self.logger.info(f"Parameters: km={km}, username={username}, date={date}")
+            self.logger.info("Attempting to generate image...")
             
             try:
-                self.logger.info("Calling generate_achievement_image")
+                self.logger.info("Before calling generate_achievement_image")
                 image_data = generate_achievement_image(km, username, date)
-                self.logger.info("Image generation completed")
+                self.logger.info(f"After calling generate_achievement_image, got data: {'yes' if image_data else 'no'}")
                 
                 if image_data:
-                    self.logger.info("Image data received, sending photo")
+                    self.logger.info("Image data received, creating BytesIO")
                     photo = BytesIO(image_data)
                     photo.name = 'achievement.png'
                     self.bot.send_photo(
@@ -334,11 +335,12 @@ class MessageHandler(BaseHandler):
             # Генерируем изображение для любой дистанции
             self.logger.info("=== Starting image generation ===")
             self.logger.info(f"Parameters: km={km}, username={username}, date={date}")
+            self.logger.info("Attempting to generate image...")
             
             try:
-                self.logger.info(f"Attempting to generate image with username: {username}")
+                self.logger.info("Before calling generate_achievement_image")
                 image_data = generate_achievement_image(km, username, date)
-                self.logger.info("Image generation completed")
+                self.logger.info(f"After calling generate_achievement_image, got data: {'yes' if image_data else 'no'}")
                 
                 if image_data:
                     self.logger.info("Image data received, creating BytesIO")
