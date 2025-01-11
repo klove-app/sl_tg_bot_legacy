@@ -225,57 +225,72 @@ def generate_achievement_image(distance, username, date):
             "Accept": "application/json",
             "Authorization": f"Bearer {cfg.STABILITY_API_KEY}"
         }
-        logger.info("Headers prepared")
+        logger.info(f"Headers prepared: {headers}")
         
         payload = {
             "text_prompts": [{"text": prompt}],
             "cfg_scale": 7,
             "samples": 1,
             "steps": 30,
+            "style_preset": "anime"
         }
-        logger.info("Payload prepared")
+        logger.info(f"Payload prepared: {payload}")
         
         logger.info("Sending request to Stability AI")
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
-        logger.info(f"Response status code: {response.status_code}")
-        
-        if response.status_code != 200:
-            logger.error(f"API request failed with status code: {response.status_code}")
-            logger.error(f"Response text: {response.text}")
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            logger.info(f"Response status code: {response.status_code}")
+            logger.info(f"Response headers: {response.headers}")
+            
+            if response.status_code != 200:
+                logger.error(f"API request failed with status code: {response.status_code}")
+                logger.error(f"Response text: {response.text}")
+                return None
+                
+            data = response.json()
+            logger.info("Response JSON parsed")
+            
+            if "artifacts" not in data:
+                logger.error("No artifacts in response")
+                logger.error(f"Full response: {data}")
+                return None
+                
+            if len(data["artifacts"]) == 0:
+                logger.error("Empty artifacts array in response")
+                logger.error(f"Full response: {data}")
+                return None
+                
+            # Получаем base64 изображения
+            image_data = data["artifacts"][0]["base64"]
+            logger.info("Got base64 image data")
+            
+            # Декодируем base64 в байты
+            image_bytes = base64.b64decode(image_data)
+            logger.info("Decoded base64 to bytes")
+            
+            # Формируем тексты для водяных знаков
+            info_text = f"{username} • {date}"  # Имя пользователя и дата
+            brand_text = "Бег: свои люди"  # Название чата
+            distance_text = f"{distance:.1f} км"  # Дистанция
+            distance_x = 0  # Позиция текста с дистанцией (будет вычислена в add_watermark)
+            
+            logger.info("Adding watermark")
+            final_image = add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
+            
+            if final_image is None:
+                logger.error("Failed to add watermark")
+                return None
+                
+            logger.info("Image generation completed successfully")
+            return final_image
+            
+        except requests.exceptions.Timeout:
+            logger.error("Request to Stability AI timed out")
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request to Stability AI failed: {e}")
             return None
             
-        data = response.json()
-        logger.info("Response JSON parsed")
-        
-        if "artifacts" not in data or len(data["artifacts"]) == 0:
-            logger.error("No artifacts in response")
-            logger.error(f"Full response: {data}")
-            return None
-            
-        # Получаем base64 изображения
-        image_data = data["artifacts"][0]["base64"]
-        logger.info("Got base64 image data")
-        
-        # Декодируем base64 в байты
-        image_bytes = base64.b64decode(image_data)
-        logger.info("Decoded base64 to bytes")
-        
-        # Формируем тексты для водяных знаков
-        info_text = f"{username} • {date}"  # Имя пользователя и дата
-        brand_text = "Бег: свои люди"  # Название чата
-        distance_text = f"{distance:.1f} км"  # Дистанция
-        distance_x = 0  # Позиция текста с дистанцией (будет вычислена в add_watermark)
-        
-        logger.info("Adding watermark")
-        final_image = add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
-        
-        if final_image is None:
-            logger.error("Failed to add watermark")
-            return None
-            
-        logger.info("Image generation completed successfully")
-        return final_image
-        
     except Exception as e:
         logger.error(f"Error in generate_achievement_image: {e}")
         logger.error(traceback.format_exc())
