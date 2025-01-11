@@ -78,15 +78,51 @@ class MessageHandler(BaseHandler):
                 user = User.get_by_id(str(message.from_user.id))
                 total_km = RunningLog.get_user_total_km(str(message.from_user.id))
                 
-                response = f"✅ Записана пробежка {km:.2f} км"
-                if description:
-                    response += f"\n📝 {description}"
+                # Получаем статистику за месяц и год
+                current_year = datetime.now().year
+                current_month = datetime.now().month
+                
+                year_stats = RunningLog.get_user_stats(str(message.from_user.id), current_year)
+                month_stats = RunningLog.get_user_stats(str(message.from_user.id), current_year, current_month)
+                
+                # Формируем сообщение со статистикой
+                response = (
+                    f"🎉 Новая пробежка записана!\n"
+                    f"📍 {km:.1f} км\n"
+                    f"📅 {datetime.now().strftime('%d.%m.%Y')}\n\n"
                     
+                    f"📊 Статистика {datetime.now().strftime('%B')}:\n"
+                    f"🏃 {month_stats['runs_count']} пробежек\n"
+                    f"📏 {month_stats['total_km']:.1f} км всего\n"
+                    f"⌀ {month_stats['avg_km']:.1f} км в среднем\n\n"
+                    
+                    f"📈 Статистика {current_year}:\n"
+                    f"🏃 {year_stats['runs_count']} пробежек\n"
+                    f"📏 {year_stats['total_km']:.1f} км всего\n"
+                    f"⌀ {year_stats['avg_km']:.1f} км в среднем"
+                )
+                
+                # Добавляем информацию о годовой цели
                 if user and user.goal_km > 0:
                     progress = (total_km / user.goal_km * 100)
-                    response += f"\n\n📊 Прогресс: {total_km:.2f} из {user.goal_km:.2f} км ({progress:.2f}%)"
+                    progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
+                    remaining = user.goal_km - total_km
+                    response += (
+                        f"\n\n🎯 Годовая цель:\n"
+                        f"🎪 {user.goal_km:.0f} км\n"
+                        f"▸ {progress_bar} {progress:.1f}%\n"
+                        f"📍 Осталось: {remaining:.1f} км"
+                    )
                 
-                # Для пробежек от 5 км генерируем изображение и отправляем одним сообщением
+                # Добавляем мотивационное сообщение
+                if km >= 10:
+                    response += "\n\n🔥 Отличная длительная пробежка!"
+                elif km >= 5:
+                    response += "\n\n💪 Хорошая тренировка!"
+                else:
+                    response += "\n\n👍 Так держать!"
+                
+                # Для пробежек от 5 км генерируем изображение
                 if km >= 5:
                     try:
                         username = message.from_user.username or message.from_user.first_name
@@ -211,16 +247,51 @@ class MessageHandler(BaseHandler):
                 total_km = RunningLog.get_user_total_km(user_id)
                 self.logger.debug(f"Total km: {total_km}")
                 
-                # Формируем ответное сообщение
-                response = f"✅ Записана пробежка {km:.2f} км"
-                if message.caption:
-                    response += f"\n📝 {message.caption}"
+                # Получаем статистику за месяц и год
+                current_year = datetime.now().year
+                current_month = datetime.now().month
+                
+                year_stats = RunningLog.get_user_stats(user_id, current_year)
+                month_stats = RunningLog.get_user_stats(user_id, current_year, current_month)
+                
+                # Формируем сообщение со статистикой
+                response = (
+                    f"🎉 Новая пробежка записана!\n"
+                    f"📍 {km:.1f} км\n"
+                    f"📅 {datetime.now().strftime('%d.%m.%Y')}\n\n"
                     
+                    f"📊 Статистика {datetime.now().strftime('%B')}:\n"
+                    f"🏃 {month_stats['runs_count']} пробежек\n"
+                    f"📏 {month_stats['total_km']:.1f} км всего\n"
+                    f"⌀ {month_stats['avg_km']:.1f} км в среднем\n\n"
+                    
+                    f"📈 Статистика {current_year}:\n"
+                    f"🏃 {year_stats['runs_count']} пробежек\n"
+                    f"📏 {year_stats['total_km']:.1f} км всего\n"
+                    f"⌀ {year_stats['avg_km']:.1f} км в среднем"
+                )
+                
+                # Добавляем информацию о годовой цели
                 if user and user.goal_km > 0:
                     progress = (total_km / user.goal_km * 100)
-                    response += f"\n\n📊 Прогресс: {total_km:.2f} из {user.goal_km:.2f} км ({progress:.2f}%)"
+                    progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
+                    remaining = user.goal_km - total_km
+                    response += (
+                        f"\n\n🎯 Годовая цель:\n"
+                        f"🎪 {user.goal_km:.0f} км\n"
+                        f"▸ {progress_bar} {progress:.1f}%\n"
+                        f"📍 Осталось: {remaining:.1f} км"
+                    )
                 
-                # Для пробежек от 5 км генерируем изображение и отправляем одним сообщением
+                # Добавляем мотивационное сообщение
+                if km >= 10:
+                    response += "\n\n🔥 Отличная длительная пробежка!"
+                elif km >= 5:
+                    response += "\n\n💪 Хорошая тренировка!"
+                else:
+                    response += "\n\n👍 Так держать!"
+                
+                # Для пробежек от 5 км генерируем изображение
                 if km >= 5:
                     try:
                         username = message.from_user.username or message.from_user.first_name
