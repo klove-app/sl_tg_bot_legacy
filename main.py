@@ -210,7 +210,10 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
 def generate_achievement_image(distance, username, date):
     """Генерирует изображение достижения с помощью Stability AI"""
     try:
-        logger.info(f"Starting image generation for {username}, distance: {distance} km")
+        logger.info(f"Starting image generation with parameters:")
+        logger.info(f"- distance: {distance}")
+        logger.info(f"- username: {username}")
+        logger.info(f"- date: {date}")
         
         # Генерируем промпт
         prompt = PromptGenerator.generate_prompt(distance)
@@ -225,7 +228,7 @@ def generate_achievement_image(distance, username, date):
             "Accept": "application/json",
             "Authorization": f"Bearer {cfg.STABILITY_API_KEY}"
         }
-        logger.info(f"Headers prepared: {headers}")
+        logger.info("Headers prepared")
         
         payload = {
             "text_prompts": [{"text": prompt}],
@@ -234,13 +237,12 @@ def generate_achievement_image(distance, username, date):
             "steps": 30,
             "style_preset": "anime"
         }
-        logger.info(f"Payload prepared: {payload}")
+        logger.info("Payload prepared")
         
         logger.info("Sending request to Stability AI")
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=30)
             logger.info(f"Response status code: {response.status_code}")
-            logger.info(f"Response headers: {response.headers}")
             
             if response.status_code != 200:
                 logger.error(f"API request failed with status code: {response.status_code}")
@@ -248,18 +250,26 @@ def generate_achievement_image(distance, username, date):
                 return None
                 
             data = response.json()
+            logger.info("Response JSON parsed")
             
             # Получаем base64 изображения
             image_data = data["artifacts"][0]["base64"]
+            logger.info("Got base64 image data")
+            
             image_bytes = base64.b64decode(image_data)
+            logger.info("Decoded base64 to bytes")
             
             # Форматируем текст для водяного знака
             info_text = f"{username} • {date}"
-            distance_text = f"{distance:.1f} км"
-            distance_x = 0  # Позиция будет вычислена в add_watermark
+            logger.info(f"Formatted info text: {info_text}")
             
-            # Добавляем водяной знак
+            distance_text = f"{distance:.1f} км"
+            logger.info(f"Formatted distance text: {distance_text}")
+            
+            distance_x = 0  # Позиция будет вычислена в add_watermark
             brand_text = "Бег: свои люди"
+            
+            logger.info("Adding watermark")
             final_image = add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
             
             if final_image:
@@ -278,7 +288,7 @@ def generate_achievement_image(distance, username, date):
             
     except Exception as e:
         logger.error(f"Error generating image: {e}")
-        logger.error(traceback.format_exc())
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         return None
 
 class PromptGenerator:
