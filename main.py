@@ -3,8 +3,13 @@ import sys
 import re
 import traceback
 import calendar
+import random
 from datetime import datetime
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
+from PIL import Image, ImageDraw, ImageFont
+import requests
+from io import BytesIO
+import base64
 
 # Добавляем текущую директорию в PATH
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -16,6 +21,7 @@ from database.base import Base, engine, SessionLocal
 from database.logger import logger
 from database.models.user import User
 from database.models.running_log import RunningLog
+from config.config import STABILITY_API_KEY, STABILITY_API_HOST, STABLE_DIFFUSION_ENGINE_ID
 
 # Импортируем обработчики
 from handlers.chat_handlers import register_chat_handlers
@@ -29,6 +35,299 @@ from handlers.reset_handlers import ResetHandler
 from handlers.admin_handlers import AdminHandler
 from handlers.donate_handlers import DonateHandler
 from handlers import message_handlers, private_handlers
+
+class PromptGenerator:
+    CARD_STYLES = [
+        "cute anime style", "Disney animation style", "Pixar style", "Studio Ghibli style",
+        "kawaii anime style", "cartoon style", "chibi style", "minimalist anime style"
+    ]
+    
+    CHARACTERS = [
+        "cute anime runner", "chibi athlete", "cartoon penguin in sportswear", "Studio Ghibli style runner",
+        "kawaii running character", "determined anime athlete", "sporty animal character",
+        "energetic chibi runner", "magical running creature"
+    ]
+    
+    ACTIONS = [
+        "running happily", "jogging with big smile", "training with joy", "sprinting through magic trail",
+        "leaping over puddles", "dashing through wind", "floating while running", "running with determination"
+    ]
+    
+    TIME_AND_WEATHER = [
+        "with sakura petals falling", "under rainbow sky", "in morning sunlight", "during golden sunset",
+        "under mystical twilight", "with starlit sky", "under northern lights", "with magical particles"
+    ]
+    
+    LOCATIONS = [
+        "in magical forest", "through enchanted park", "on floating islands", "in cloud kingdom",
+        "through ancient forest", "on rainbow road", "in crystal canyon", "in sky garden"
+    ]
+    
+    DECORATIONS = [
+        "with anime sparkles and stars", "with kawaii decorations", "with spirit wisps",
+        "with glowing butterflies", "with energy ribbons", "with floating lanterns",
+        "with magical runes", "with celestial symbols"
+    ]
+    
+    COLOR_SCHEMES = [
+        "vibrant anime colors", "dreamy pastel tones", "Studio Ghibli palette",
+        "ethereal harmonies", "mystic twilight colors", "enchanted palette",
+        "celestial spectrum", "crystal clear tones"
+    ]
+    
+    STYLE_ADDITIONS = [
+        "anime aesthetic", "playful cartoon mood", "ethereal glow effects",
+        "mystical ambiance", "enchanted atmosphere", "spiritual energy flow",
+        "magical realism", "fantasy elements"
+    ]
+
+    @classmethod
+    def generate_prompt(cls, distance):
+        """Генерирует промпт для изображения на основе дистанции"""
+        style = random.choice(cls.CARD_STYLES)
+        character = random.choice(cls.CHARACTERS)
+        action = random.choice(cls.ACTIONS)
+        time_weather = random.choice(cls.TIME_AND_WEATHER)
+        location = random.choice(cls.LOCATIONS)
+        decoration = random.choice(cls.DECORATIONS)
+        color_scheme = random.choice(cls.COLOR_SCHEMES)
+        style_addition = random.choice(cls.STYLE_ADDITIONS)
+        
+        # Базовый промпт
+        prompt = f"A {character} {action} {time_weather} {location} {decoration}, {style}, {color_scheme}, {style_addition}"
+        
+        # Добавляем специальные элементы в зависимости от дистанции
+        if distance >= 42.2:  # Марафон
+            prompt += ", epic achievement, victory pose, golden aura"
+        elif distance >= 21.1:  # Полумарафон
+            prompt += ", triumphant pose, silver aura"
+        elif distance >= 10:  # Длинная дистанция
+            prompt += ", proud pose, glowing energy"
+        else:  # Обычная пробежка
+            prompt += ", happy mood, positive energy"
+            
+        return prompt
+
+def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x):
+    """Добавляет водяной знак на изображение"""
+    try:
+        # Открываем изображение
+        image = Image.open(BytesIO(image_bytes))
+        
+        # Создаем объект для рисования
+        draw = ImageDraw.Draw(image)
+        
+        # Пытаемся загрузить шрифты
+        font_paths = [
+            # Windows
+            "C:\\Windows\\Fonts\\arialbd.ttf",  # Arial Bold
+            "C:\\Windows\\Fonts\\arial.ttf",    # Arial Regular
+            "C:\\Windows\\Fonts\\calibrib.ttf", # Calibri Bold
+            "C:\\Windows\\Fonts\\calibri.ttf",  # Calibri Regular
+            "C:\\Windows\\Fonts\\segoeui.ttf",  # Segoe UI
+            "C:\\Windows\\Fonts\\consola.ttf",  # Consolas Regular
+        ]
+        
+        found_fonts = []
+        for font_path in font_paths:
+            try:
+                if os.path.exists(font_path):
+                    logger.info(f"Найден шрифт: {font_path}")
+                    found_fonts.append(font_path)
+            except Exception as e:
+                logger.error(f"Ошибка при проверке шрифта {font_path}: {e}")
+        
+        if not found_fonts:
+            logger.error("Не найдено ни одного шрифта!")
+            return None
+            
+        # Используем первый найденный шрифт
+        font_path = found_fonts[0]
+        logger.info(f"Используем шрифт: {font_path}")
+        
+        try:
+            font_large = ImageFont.truetype(font_path, 60)
+            font_medium = ImageFont.truetype(font_path, 40)
+            font_brand = ImageFont.truetype(font_path, 24)
+            font_info = ImageFont.truetype(font_path, 24)
+        except Exception as e:
+            logger.error(f"Ошибка при загрузке шрифтов: {e}")
+            return None
+            
+        # Определяем цвет фона в зависимости от дистанции
+        if distance_x >= 42.2:  # Марафон
+            background_color = (139, 69, 19, 180)  # Коричневый
+        elif distance_x >= 21.1:  # Полумарафон
+            background_color = (205, 127, 50, 180)  # Бронзовый
+        elif distance_x >= 10:  # Длинная дистанция
+            background_color = (70, 130, 180, 180)  # Стальной синий
+        else:  # Обычная пробежка
+            background_color = (46, 139, 87, 180)  # Морской зеленый
+            
+        # Размеры изображения
+        width, height = image.size
+        
+        # Отступы
+        left_margin = 40
+        bottom_margin = height - 40
+        
+        # Рисуем полупрозрачный прямоугольник для бренда
+        brand_bbox = draw.textbbox((0, 0), brand_text, font=font_brand)
+        brand_width = brand_bbox[2] - brand_bbox[0]
+        brand_height = brand_bbox[3] - brand_bbox[1]
+        
+        brand_background = Image.new('RGBA', (brand_width + 80, brand_height + 20), background_color)
+        image.paste(brand_background, (left_margin - 40, bottom_margin - brand_height - 60), brand_background)
+        
+        # Рисуем полупрозрачный прямоугольник для дистанции
+        distance_bbox = draw.textbbox((0, 0), distance_text, font=font_large)
+        distance_width = distance_bbox[2] - distance_bbox[0]
+        distance_height = distance_bbox[3] - distance_bbox[1]
+        
+        distance_background = Image.new('RGBA', (distance_width + 80, distance_height + 20), background_color)
+        image.paste(distance_background, (distance_x - 40, bottom_margin - distance_height - 60), distance_background)
+        
+        # Рисуем тексты
+        draw.text((left_margin, bottom_margin - 80), brand_text, font=font_brand, fill='white')
+        draw.text((left_margin + draw.textlength(info_text, font=font_info) + 40, bottom_margin - 80), distance_text, font=font_large, fill='white')
+        draw.text((left_margin, bottom_margin - 40), info_text, font=font_info, fill='white')
+        
+        # Рисуем линию с градиентом прозрачности
+        line_start_x = int(left_margin + draw.textlength(info_text, font=font_info) + 40)
+        line_end_x = int(distance_x - 40)
+        line_y = bottom_margin - 30
+        
+        for x in range(line_start_x, line_end_x):
+            # Вычисляем прозрачность для текущей точки
+            alpha = int(255 * (1 - (x - line_start_x) / (line_end_x - line_start_x)))
+            draw.line([(x, line_y), (x + 1, line_y)], fill=(255, 255, 255, alpha), width=2)
+        
+        # Сохраняем изображение
+        output = BytesIO()
+        image.save(output, format='PNG')
+        output.seek(0)
+        return output.getvalue()
+        
+    except Exception as e:
+        logger.error(f"Ошибка при добавлении водяного знака: {e}")
+        logger.error(traceback.format_exc())
+        return None
+
+def generate_achievement_image(distance, username, date):
+    """Генерирует изображение достижения с помощью Stability AI"""
+    try:
+        # Генерируем промпт
+        prompt = PromptGenerator.generate_prompt(distance)
+        logger.info(f"Сгенерирован промпт: {prompt}")
+        
+        # Формируем запрос к API
+        url = f"{STABILITY_API_HOST}/v1/generation/{STABLE_DIFFUSION_ENGINE_ID}/text-to-image"
+        
+        headers = {
+            "Accept": "application/json",
+            "Authorization": f"Bearer {STABILITY_API_KEY}"
+        }
+        
+        payload = {
+            "text_prompts": [{"text": prompt}],
+            "cfg_scale": 7,
+            "height": 512,
+            "width": 768,
+            "samples": 1,
+            "steps": 30,
+        }
+        
+        logger.info("Отправляем запрос к Stability AI")
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        
+        if response.status_code != 200:
+            logger.error(f"Ошибка при запросе к API: {response.status_code}")
+            logger.error(f"Ответ: {response.text}")
+            return None
+            
+        data = response.json()
+        
+        if "artifacts" not in data or len(data["artifacts"]) == 0:
+            logger.error("В ответе отсутствуют сгенерированные изображения")
+            return None
+            
+        # Получаем base64 изображения
+        image_data = data["artifacts"][0]["base64"]
+        image_bytes = base64.b64decode(image_data)
+        
+        # Форматируем тексты для водяного знака
+        brand_text = "Running Bot"
+        info_text = f"{username} • {date}"
+        distance_text = f"{distance:.1f} km"
+        distance_x = 650  # Позиция для текста с дистанцией
+        
+        # Добавляем водяной знак
+        logger.info("Добавляем водяной знак")
+        final_image = add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
+        
+        if final_image is None:
+            logger.error("Не удалось добавить водяной знак")
+            return None
+            
+        return final_image
+        
+    except requests.exceptions.Timeout:
+        logger.error("Таймаут при запросе к API")
+        return None
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Ошибка при запросе к API: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Неожиданная ошибка: {e}")
+        logger.error(traceback.format_exc())
+        return None
+
+def send_achievement_message(message, distance):
+    """Отправляет поздравительное сообщение с изображением"""
+    try:
+        # Получаем информацию о пользователе
+        username = message.from_user.username or message.from_user.first_name
+        date = datetime.now().strftime('%d.%m.%Y')
+        
+        # Пытаемся сгенерировать изображение
+        image_data = generate_achievement_image(distance, username, date)
+        
+        if image_data:
+            # Отправляем изображение
+            photo = BytesIO(image_data)
+            photo.name = 'achievement.png'
+            
+            # Формируем текст сообщения
+            if distance >= 42.2:
+                text = "🏆 *Поздравляем с марафоном!*\nЭто невероятное достижение! 🌟"
+            elif distance >= 21.1:
+                text = "🥈 *Отличный полумарафон!*\nВы превзошли себя! 💫"
+            elif distance >= 10:
+                text = "🌟 *Впечатляющая дистанция!*\nПродолжайте в том же духе! ✨"
+            else:
+                text = "👏 *Отличная пробежка!*\nКаждый шаг приближает к цели! 🌱"
+            
+            bot.send_photo(
+                message.chat.id,
+                photo,
+                caption=text,
+                parse_mode='Markdown',
+                reply_to_message_id=message.message_id
+            )
+            logger.info(f"Отправлено изображение достижения для {username}")
+        else:
+            # Отправляем текстовое сообщение без изображения
+            text = "🎉 *Поздравляем с достижением!*\n" + \
+                   f"Вы пробежали {distance:.1f} км! Так держать! 💪"
+            bot.reply_to(message, text, parse_mode='Markdown')
+            logger.warning("Отправлено текстовое поздравление (не удалось сгенерировать изображение)")
+            
+    except Exception as e:
+        logger.error(f"Ошибка при отправке поздравления: {e}")
+        logger.error(traceback.format_exc())
+        text = "🎉 *Поздравляем!*\n" + \
+               f"Вы пробежали {distance:.1f} км! Отличный результат! 🌟"
+        bot.reply_to(message, text, parse_mode='Markdown')
 
 class MessageHandler(BaseHandler):
     def register(self):
@@ -191,6 +490,11 @@ class MessageHandler(BaseHandler):
                 
                 self.bot.reply_to(message, response, parse_mode='Markdown')
                 self.logger.info(f"Logged run: {km}km for user {user_id}")
+                
+                # Отправляем поздравительное сообщение с изображением для длинных дистанций
+                if km >= 10:
+                    send_achievement_message(message, km)
+                    
             else:
                 self.logger.error(f"Failed to save run for user {user_id}")
                 error_message = (
