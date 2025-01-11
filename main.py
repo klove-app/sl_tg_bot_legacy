@@ -21,7 +21,7 @@ from database.base import Base, engine, SessionLocal
 from database.logger import logger
 from database.models.user import User
 from database.models.running_log import RunningLog
-from config.config import STABILITY_API_KEY, STABILITY_API_HOST, STABLE_DIFFUSION_ENGINE_ID
+from config.config import STABILITY_API_HOST, STABILITY_API_KEY, STABLE_DIFFUSION_ENGINE_ID
 
 # Импортируем обработчики
 from handlers.chat_handlers import register_chat_handlers
@@ -224,6 +224,7 @@ def generate_achievement_image(distance, username, date):
         url = f"{STABILITY_API_HOST}/v1/generation/{STABLE_DIFFUSION_ENGINE_ID}/text-to-image"
         
         headers = {
+            "Content-Type": "application/json",
             "Accept": "application/json",
             "Authorization": f"Bearer {STABILITY_API_KEY}"
         }
@@ -231,8 +232,6 @@ def generate_achievement_image(distance, username, date):
         payload = {
             "text_prompts": [{"text": prompt}],
             "cfg_scale": 7,
-            "height": 512,
-            "width": 768,
             "samples": 1,
             "steps": 30,
         }
