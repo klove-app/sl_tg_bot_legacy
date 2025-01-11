@@ -89,6 +89,89 @@ class MessageHandler(BaseHandler):
             # Добавляем запись о пробежке
             chat_id = str(message.chat.id) if message.chat.type != 'private' else None
             self.logger.info("=== Before adding run entry ===")
+            
+            # Получаем статистику пользователя
+            user = User.get_by_id(str(message.from_user.id))
+            total_km = RunningLog.get_user_total_km(str(message.from_user.id))
+            
+            # Получаем статистику за месяц и год
+            current_year = datetime.now().year
+            current_month = datetime.now().month
+            
+            year_stats = RunningLog.get_user_stats(str(message.from_user.id), current_year)
+            month_stats = RunningLog.get_user_stats(str(message.from_user.id), current_year, current_month)
+            
+            # Формируем сообщение со статистикой
+            response = (
+                f"🎉 Новая пробежка записана!\n"
+                f"📍 {km:.1f} км\n"
+                f"📅 {datetime.now().strftime('%d.%m.%Y')}\n\n"
+                
+                f"📊 Статистика {datetime.now().strftime('%B')}:\n"
+                f"🏃 {month_stats['runs_count']} пробежек\n"
+                f"📏 {month_stats['total_km']:.1f} км всего\n"
+                f"⌀ {month_stats['avg_km']:.1f} км в среднем\n\n"
+                
+                f"📈 Статистика {current_year}:\n"
+                f"🏃 {year_stats['runs_count']} пробежек\n"
+                f"📏 {year_stats['total_km']:.1f} км всего\n"
+                f"⌀ {year_stats['avg_km']:.1f} км в среднем"
+            )
+            
+            # Добавляем информацию о годовой цели
+            if user and user.goal_km > 0:
+                progress = (total_km / user.goal_km * 100)
+                progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
+                remaining = user.goal_km - total_km
+                response += (
+                    f"\n\n🎯 Годовая цель:\n"
+                    f"🎪 {user.goal_km:.0f} км\n"
+                    f"▸ {progress_bar} {progress:.1f}%\n"
+                    f"📍 Осталось: {remaining:.1f} км"
+                )
+            
+            # Добавляем мотивационное сообщение
+            if km >= 10:
+                response += "\n\n🔥 Отличная длительная пробежка!"
+            elif km >= 5:
+                response += "\n\n💪 Хорошая тренировка!"
+            else:
+                response += "\n\n👍 Так держать!"
+            
+            # Генерируем изображение
+            self.logger.info("=== Starting image generation block ===")
+            self.logger.info(f"Message from user: {message.from_user.id}")
+            self.logger.info(f"Distance: {km} km")
+            self.logger.info("Response message prepared, attempting image generation")
+            
+            try:
+                self.logger.info("Preparing to generate achievement image")
+                self.logger.info(f"Calling generate_achievement_image with: km={km}, username={username}, date={date}")
+                image_data = generate_achievement_image(km, username, date)
+                self.logger.info("Image generation call completed")
+                
+                if image_data:
+                    self.logger.info("Image data received, creating BytesIO")
+                    photo = BytesIO(image_data)
+                    photo.name = 'achievement.png'
+                    self.logger.info("Sending photo with caption")
+                    self.bot.send_photo(
+                        message.chat.id,
+                        photo,
+                        caption=response,
+                        parse_mode='Markdown',
+                        reply_to_message_id=message.message_id
+                    )
+                    self.logger.info("Photo sent successfully")
+                else:
+                    self.logger.error("Image data is None")
+                    self.bot.reply_to(message, response, parse_mode='Markdown')
+            except Exception as e:
+                self.logger.error(f"Error in image generation/sending: {e}")
+                self.logger.error(traceback.format_exc())
+                self.bot.reply_to(message, response, parse_mode='Markdown')
+            
+            # Сохраняем запись о пробежке после отправки сообщения
             if RunningLog.add_entry(
                 user_id=str(message.from_user.id),
                 km=km,
@@ -96,88 +179,6 @@ class MessageHandler(BaseHandler):
                 notes=description if description else None,
                 chat_id=chat_id
             ):
-                self.logger.info("=== Run entry added successfully, preparing response ===")
-                # Получаем статистику пользователя
-                user = User.get_by_id(str(message.from_user.id))
-                total_km = RunningLog.get_user_total_km(str(message.from_user.id))
-                
-                # Получаем статистику за месяц и год
-                current_year = datetime.now().year
-                current_month = datetime.now().month
-                
-                year_stats = RunningLog.get_user_stats(str(message.from_user.id), current_year)
-                month_stats = RunningLog.get_user_stats(str(message.from_user.id), current_year, current_month)
-                
-                # Формируем сообщение со статистикой
-                response = (
-                    f"🎉 Новая пробежка записана!\n"
-                    f"📍 {km:.1f} км\n"
-                    f"📅 {datetime.now().strftime('%d.%m.%Y')}\n\n"
-                    
-                    f"📊 Статистика {datetime.now().strftime('%B')}:\n"
-                    f"🏃 {month_stats['runs_count']} пробежек\n"
-                    f"📏 {month_stats['total_km']:.1f} км всего\n"
-                    f"⌀ {month_stats['avg_km']:.1f} км в среднем\n\n"
-                    
-                    f"📈 Статистика {current_year}:\n"
-                    f"🏃 {year_stats['runs_count']} пробежек\n"
-                    f"📏 {year_stats['total_km']:.1f} км всего\n"
-                    f"⌀ {year_stats['avg_km']:.1f} км в среднем"
-                )
-                
-                # Добавляем информацию о годовой цели
-                if user and user.goal_km > 0:
-                    progress = (total_km / user.goal_km * 100)
-                    progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
-                    remaining = user.goal_km - total_km
-                    response += (
-                        f"\n\n🎯 Годовая цель:\n"
-                        f"🎪 {user.goal_km:.0f} км\n"
-                        f"▸ {progress_bar} {progress:.1f}%\n"
-                        f"📍 Осталось: {remaining:.1f} км"
-                    )
-                
-                # Добавляем мотивационное сообщение
-                if km >= 10:
-                    response += "\n\n🔥 Отличная длительная пробежка!"
-                elif km >= 5:
-                    response += "\n\n💪 Хорошая тренировка!"
-                else:
-                    response += "\n\n👍 Так держать!"
-                
-                self.logger.info("=== Starting image generation block ===")
-                self.logger.info(f"Message from user: {message.from_user.id}")
-                self.logger.info(f"Distance: {km} km")
-                self.logger.info("Response message prepared, attempting image generation")
-                
-                # Генерируем изображение для любой дистанции
-                try:
-                    self.logger.info("Preparing to generate achievement image")
-                    self.logger.info(f"Calling generate_achievement_image with: km={km}, username={username}, date={date}")
-                    image_data = generate_achievement_image(km, username, date)
-                    self.logger.info("Image generation call completed")
-                    
-                    if image_data:
-                        self.logger.info("Image data received, creating BytesIO")
-                        photo = BytesIO(image_data)
-                        photo.name = 'achievement.png'
-                        self.logger.info("Sending photo with caption")
-                        self.bot.send_photo(
-                            message.chat.id,
-                            photo,
-                            caption=response,
-                            parse_mode='Markdown',
-                            reply_to_message_id=message.message_id
-                        )
-                        self.logger.info("Photo sent successfully")
-                    else:
-                        self.logger.error("Image data is None")
-                        self.bot.reply_to(message, response, parse_mode='Markdown')
-                except Exception as e:
-                    self.logger.error(f"Error in image generation/sending: {e}")
-                    self.logger.error(traceback.format_exc())
-                    self.bot.reply_to(message, response, parse_mode='Markdown')
-                
                 self.logger.info(f"Logged run: {km}km for user {message.from_user.id}")
             else:
                 self.bot.reply_to(message, "❌ Не удалось сохранить пробежку")
@@ -265,9 +266,6 @@ class MessageHandler(BaseHandler):
                 user = User.create(user_id=user_id, username=username)
                 self.logger.info(f"Created new user: {username} ({user_id})")
             
-            # Добавляем запись о пробежке
-            self.logger.info(f"Adding run entry: {km} km")
-            
             # Получаем статистику за месяц и год
             current_year = datetime.now().year
             current_month = datetime.now().month
@@ -315,7 +313,7 @@ class MessageHandler(BaseHandler):
             else:
                 response += "\n\n👍 Так держать!"
             
-            # Генерируем изображение для любой дистанции
+            # Генерируем изображение
             try:
                 self.logger.info(f"Attempting to generate image with username: {username}")
                 image_data = generate_achievement_image(km, username, date)
@@ -342,7 +340,22 @@ class MessageHandler(BaseHandler):
                 self.logger.error(traceback.format_exc())
                 self.bot.reply_to(message, response, parse_mode='Markdown')
             
-            self.logger.info(f"Logged run with photo: {km}km for user {user_id}")
+            # Сохраняем запись о пробежке после отправки сообщения
+            if RunningLog.add_entry(
+                user_id=user_id,
+                km=km,
+                date_added=datetime.now().date(),
+                notes=message.caption,
+                chat_id=chat_id,
+                chat_type=chat_type
+            ):
+                self.logger.info(f"Logged run with photo: {km}km for user {user_id}")
+            else:
+                error_message = (
+                    "⚠️ *Не удалось сохранить пробежку*\n\n"
+                    "Пожалуйста, попробуйте еще раз или обратитесь к администратору"
+                )
+                self.bot.reply_to(message, error_message, parse_mode='Markdown')
         except ValueError:
             self.logger.warning(f"Invalid caption format: {message.caption}")
             self.bot.reply_to(
