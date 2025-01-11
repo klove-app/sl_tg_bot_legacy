@@ -254,10 +254,11 @@ def generate_achievement_image(distance, username, date):
         info_text = f"{username} • {date}"
         distance_text = f"{distance:.1f} km"
         distance_x = 650  # Позиция для текста с дистанцией
+        brand_text = "Бег: свои люди"  # Название чата
         
         # Добавляем водяной знак
         logger.info("Добавляем водяной знак")
-        final_image = add_watermark(image_bytes, info_text, "", distance_text, distance_x)
+        final_image = add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         
         if final_image is None:
             logger.error("Не удалось добавить водяной знак")
@@ -275,6 +276,78 @@ def generate_achievement_image(distance, username, date):
         logger.error(f"Неожиданная ошибка: {e}")
         logger.error(traceback.format_exc())
         return None
+
+class PromptGenerator:
+    CARD_STYLES = [
+        "cute anime style", "Disney animation style", "Pixar style", "Studio Ghibli style",
+        "kawaii anime style", "cartoon style", "chibi style", "minimalist anime style"
+    ]
+    
+    CHARACTERS = [
+        "cute anime runner", "chibi athlete", "cartoon penguin in sportswear", "Studio Ghibli style runner",
+        "kawaii running character", "determined anime athlete", "sporty animal character",
+        "energetic chibi runner", "magical running creature"
+    ]
+    
+    ACTIONS = [
+        "running happily", "jogging with big smile", "training with joy", "sprinting through magic trail",
+        "leaping over puddles", "dashing through wind", "floating while running", "running with determination"
+    ]
+    
+    TIME_AND_WEATHER = [
+        "with sakura petals falling", "under rainbow sky", "in morning sunlight", "during golden sunset",
+        "under mystical twilight", "with starlit sky", "under northern lights", "with magical particles"
+    ]
+    
+    LOCATIONS = [
+        "in magical forest", "through enchanted park", "on floating islands", "in cloud kingdom",
+        "through ancient forest", "on rainbow road", "in crystal canyon", "in sky garden"
+    ]
+    
+    DECORATIONS = [
+        "with anime sparkles and stars", "with kawaii decorations", "with spirit wisps",
+        "with glowing butterflies", "with energy ribbons", "with floating lanterns",
+        "with magical runes", "with celestial symbols"
+    ]
+    
+    COLOR_SCHEMES = [
+        "vibrant anime colors", "dreamy pastel tones", "Studio Ghibli palette",
+        "ethereal harmonies", "mystic twilight colors", "enchanted palette",
+        "celestial spectrum", "crystal clear tones"
+    ]
+    
+    STYLE_ADDITIONS = [
+        "anime aesthetic", "playful cartoon mood", "ethereal glow effects",
+        "mystical ambiance", "enchanted atmosphere", "spiritual energy flow",
+        "magical realism", "fantasy elements"
+    ]
+    
+    @classmethod
+    def generate_prompt(cls, distance):
+        """Генерирует промпт для изображения на основе дистанции"""
+        style = random.choice(cls.CARD_STYLES)
+        character = random.choice(cls.CHARACTERS)
+        action = random.choice(cls.ACTIONS)
+        time_weather = random.choice(cls.TIME_AND_WEATHER)
+        location = random.choice(cls.LOCATIONS)
+        decoration = random.choice(cls.DECORATIONS)
+        color_scheme = random.choice(cls.COLOR_SCHEMES)
+        style_addition = random.choice(cls.STYLE_ADDITIONS)
+        
+        # Базовый промпт
+        prompt = f"A {character} {action} {time_weather} {location} {decoration}, {style}, {color_scheme}, {style_addition}"
+        
+        # Добавляем специальные элементы в зависимости от дистанции
+        if distance >= 42.2:  # Марафон
+            prompt += ", epic achievement, victory pose, golden aura, triumphant atmosphere"
+        elif distance >= 21.1:  # Полумарафон
+            prompt += ", great achievement, triumphant pose, silver aura, proud atmosphere"
+        elif distance >= 10:  # Длинная дистанция
+            prompt += ", achievement, proud pose, glowing energy, determined mood"
+        else:  # Любая другая дистанция
+            prompt += ", joyful achievement, happy mood, positive energy, inspiring atmosphere"
+            
+        return prompt
 
 class MessageHandler(BaseHandler):
     def register(self):
@@ -855,7 +928,7 @@ def register_message_handlers(bot):
 
 def register_handlers(bot):
     """Регистрирует все обработчики"""
-    message_handlers.register_handlers(bot)
+    register_message_handlers(bot)  # Используем только один обработчик сообщений
     private_handlers.register_handlers(bot)
 
 def main():
@@ -868,7 +941,7 @@ def main():
         logger.info("Database tables created")
         
         # Регистрируем обработчики
-        register_message_handlers(bot)
+        register_handlers(bot)  # Регистрируем все обработчики
         register_chat_handlers(bot)
         register_challenge_handlers(bot)
         register_team_handlers(bot)
