@@ -210,6 +210,10 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
 def generate_achievement_image(distance, username, date):
     """Генерирует изображение достижения с помощью Stability AI"""
     try:
+        if not username:
+            logger.error("Username is None or empty")
+            username = "Anonymous"
+        
         logger.info(f"Starting image generation with parameters:")
         logger.info(f"- distance: {distance}")
         logger.info(f"- username: {username}")

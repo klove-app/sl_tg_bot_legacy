@@ -9,6 +9,20 @@ import traceback
 import re
 
 class MessageHandler(BaseHandler):
+    def _get_username(self, message):
+        """Безопасное получение имени пользователя"""
+        try:
+            username = message.from_user.username
+            if not username:
+                username = message.from_user.first_name
+            if not username:
+                username = f"User{message.from_user.id}"
+            self.logger.info(f"Retrieved username: {username}")
+            return username
+        except Exception as e:
+            self.logger.error(f"Error getting username: {e}")
+            return f"User{message.from_user.id}"
+
     def register(self):
         """Регистрирует обработчики сообщений"""
         self.logger.info("Registering message handlers")
@@ -252,12 +266,10 @@ class MessageHandler(BaseHandler):
             self.logger.info(f"Adding run entry: {km} km")
             
             # Определяем username до генерации изображения
-            username = message.from_user.username or message.from_user.first_name
-            if not username:
-                username = "Anonymous"
+            username = self._get_username(message)
             date = datetime.now().strftime('%d.%m.%Y')
             
-            self.logger.info(f"Username: {username}, Date: {date}")
+            self.logger.info(f"Username for image generation: {username}, Date: {date}")
             
             # Получаем статистику за месяц и год
             current_year = datetime.now().year
@@ -307,28 +319,32 @@ class MessageHandler(BaseHandler):
                 response += "\n\n👍 Так держать!"
             
             # Генерируем изображение
-            image_data = generate_achievement_image(km, username, date)
-            
-            # Добавляем запись в базу данных
-            RunningLog.add_run(user_id, km, chat_id, chat_type)
-            
-            if image_data:
-                self.logger.info("Image data received, creating BytesIO")
-                photo = BytesIO(image_data)
-                photo.name = 'achievement.png'
-                self.logger.info("Sending photo with caption")
-                self.bot.send_photo(
-                    message.chat.id,
-                    photo,
-                    caption=response,
-                    parse_mode='Markdown',
-                    reply_to_message_id=message.message_id
-                )
-                self.logger.info("Photo sent successfully")
-            else:
-                self.logger.error("Image data is None")
-                self.bot.reply_to(message, response, parse_mode='Markdown')
+            try:
+                self.logger.info(f"Attempting to generate image with username: {username}")
+                image_data = generate_achievement_image(km, username, date)
+                self.logger.info("Image generation completed")
                 
+                if image_data:
+                    self.logger.info("Image data received, creating BytesIO")
+                    photo = BytesIO(image_data)
+                    photo.name = 'achievement.png'
+                    self.logger.info("Sending photo with caption")
+                    self.bot.send_photo(
+                        message.chat.id,
+                        photo,
+                        caption=response,
+                        parse_mode='Markdown',
+                        reply_to_message_id=message.message_id
+                    )
+                    self.logger.info("Photo sent successfully")
+                else:
+                    self.logger.error("Image data is None")
+                    self.bot.reply_to(message, response, parse_mode='Markdown')
+            except Exception as e:
+                self.logger.error(f"Error in image generation/sending: {e}")
+                self.logger.error(traceback.format_exc())
+                self.bot.reply_to(message, response, parse_mode='Markdown')
+            
             self.logger.info(f"Logged run with photo: {km}km for user {user_id}")
         except ValueError:
             self.logger.warning(f"Invalid caption format: {message.caption}")
@@ -341,7 +357,7 @@ class MessageHandler(BaseHandler):
             )
         except Exception as e:
             self.logger.error(f"Error in handle_photo_run: {e}")
-            self.logger.error(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(traceback.format_exc())
             error_message = (
                 "😔 *Произошла ошибка*\n\n"
                 "Пожалуйста, попробуйте позже или обратитесь к администратору"
