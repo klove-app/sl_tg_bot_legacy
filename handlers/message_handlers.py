@@ -258,16 +258,18 @@ class MessageHandler(BaseHandler):
                 total_km = RunningLog.get_user_total_km(user_id)
                 self.logger.debug(f"Total km: {total_km}")
                 
-                # Получаем статистику за месяц и год
                 current_year = datetime.now().year
                 current_month = datetime.now().month
                 
                 year_stats = RunningLog.get_user_stats(user_id, current_year)
-                month_stats = RunningLog.get_user_stats(user_id, current_year, current_month)
+                self.logger.debug(f"Year stats: {year_stats}")
                 
-                # Формируем сообщение со статистикой
+                month_stats = RunningLog.get_user_stats(user_id, current_year, current_month)
+                self.logger.debug(f"Month stats: {month_stats}")
+                
+                # Формируем ответное сообщение
                 response = (
-                    f"🎉 Новая пробежка записана!\n"
+                    f"🎉 Пробежка с фото записана!\n"
                     f"📍 {km:.1f} км\n"
                     f"📅 {datetime.now().strftime('%d.%m.%Y')}\n\n"
                     
@@ -283,7 +285,7 @@ class MessageHandler(BaseHandler):
                 )
                 
                 # Добавляем информацию о годовой цели
-                if user and user.goal_km > 0:
+                if user.goal_km and user.goal_km > 0:
                     progress = (total_km / user.goal_km * 100)
                     progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
                     remaining = user.goal_km - total_km
@@ -292,6 +294,10 @@ class MessageHandler(BaseHandler):
                         f"🎪 {user.goal_km:.0f} км\n"
                         f"▸ {progress_bar} {progress:.1f}%\n"
                         f"📍 Осталось: {remaining:.1f} км"
+                    )
+                else:
+                    response += (
+                        f"\n\n💡 Установите годовую цель командой /setgoal"
                     )
                 
                 # Добавляем мотивационное сообщение
@@ -302,7 +308,7 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
-                # Генерируем изображение для любой дистанции
+                # Определяем username и date для генерации изображения
                 username = message.from_user.username
                 self.logger.info(f"Username from message.from_user.username: {username}")
                 
@@ -329,25 +335,37 @@ class MessageHandler(BaseHandler):
                     else:
                         self.bot.reply_to(message, response, parse_mode='Markdown')
                 except Exception as e:
-                    self.logger.error(f"Ошибка при генерации изображения: {e}")
+                    self.logger.error(f"Error generating image: {e}")
                     self.logger.error(traceback.format_exc())
                     self.bot.reply_to(message, response, parse_mode='Markdown')
                 
-                self.logger.info(f"Logged run: {km}km for user {message.from_user.id}")
+                self.logger.info(f"Logged run with photo: {km}km for user {user_id}")
             else:
-                self.bot.reply_to(message, "❌ Не удалось сохранить пробежку")
-                
-        except ValueError as e:
-            self.logger.error(f"Error parsing message: {e}")
-            if message.chat.type == 'private':
-                self.bot.reply_to(
-                    message,
-                    "⚠️ *Некорректный формат*\n\n"
-                    "Отправьте сообщение в формате:\n"
-                    "• `5.2` - просто километраж\n"
-                    "• `5.2 Утренняя пробежка` - с описанием",
-                    parse_mode='Markdown'
+                self.logger.error(f"Failed to save run with photo for user {user_id}")
+                error_message = (
+                    "⚠️ *Не удалось сохранить пробежку*\n\n"
+                    "Пожалуйста, попробуйте еще раз или обратитесь к администратору"
                 )
+                self.bot.reply_to(message, error_message, parse_mode='Markdown')
+            return
+                
+        except ValueError:
+            self.logger.warning(f"Invalid caption format: {message.caption}")
+            self.bot.reply_to(
+                message,
+                "⚠️ *Некорректный формат числа*\n\n"
+                "Используйте точку или запятую\n"
+                "Пример: `5.2` или `5,2`",
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            self.logger.error(f"Error in handle_photo_run: {e}")
+            self.logger.error(f"Full traceback: {traceback.format_exc()}")
+            error_message = (
+                "😔 *Произошла ошибка*\n\n"
+                "Пожалуйста, попробуйте позже или обратитесь к администратору"
+            )
+            self.bot.reply_to(message, error_message, parse_mode='Markdown')
 
 def register_handlers(bot):
     """Регистрирует обработчики сообщений"""
