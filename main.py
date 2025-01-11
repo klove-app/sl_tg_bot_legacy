@@ -55,11 +55,29 @@ class MessageHandler(BaseHandler):
         self.logger.info(f"Processing message: {message.text}")
         self.logger.info(f"Chat type: {message.chat.type}, Chat ID: {message.chat.id}")
         
+        # Проверяем, что сообщение адресовано боту
+        is_bot_mentioned = False
+        if message.reply_to_message and message.reply_to_message.from_user.id == self.bot.get_me().id:
+            is_bot_mentioned = True
+        elif self.bot.get_me().username and f"@{self.bot.get_me().username}" in message.text:
+            is_bot_mentioned = True
+        elif message.chat.type == 'private':
+            is_bot_mentioned = True
+            
+        # Если сообщение не адресовано боту - игнорируем
+        if not is_bot_mentioned:
+            return
+        
         # Проверяем, содержит ли сообщение число
         try:
-            # Извлекаем первое число из сообщения
-            km_str = message.text.split()[0].replace(',', '.')
-            km = float(km_str)
+            # Извлекаем первое число из сообщения, поддерживая целые и дробные числа
+            first_word = message.text.split()[0]
+            # Пробуем сначала преобразовать как есть (для целых чисел)
+            try:
+                km = float(first_word)
+            except ValueError:
+                # Если не получилось, пробуем заменить запятую на точку (для дробных)
+                km = float(first_word.replace(',', '.'))
             
             self.logger.info(f"Extracted distance: {km} km")
             
@@ -221,6 +239,19 @@ class MessageHandler(BaseHandler):
         self.logger.info(f"Processing photo message with caption: {message.caption}")
         self.logger.info(f"Chat type: {message.chat.type}, Chat ID: {message.chat.id}")
         
+        # Проверяем, что фото адресовано боту
+        is_bot_mentioned = False
+        if message.reply_to_message and message.reply_to_message.from_user.id == self.bot.get_me().id:
+            is_bot_mentioned = True
+        elif self.bot.get_me().username and message.caption and f"@{self.bot.get_me().username}" in message.caption:
+            is_bot_mentioned = True
+        elif message.chat.type == 'private':
+            is_bot_mentioned = True
+            
+        # Если фото не адресовано боту - игнорируем
+        if not is_bot_mentioned:
+            return
+        
         if not message.caption:
             self.logger.warning("No caption provided with photo")
             self.bot.reply_to(
@@ -232,9 +263,14 @@ class MessageHandler(BaseHandler):
             return
             
         try:
-            # Извлекаем первое число из подписи
-            km_str = message.caption.split()[0].replace(',', '.')
-            km = float(km_str)
+            # Извлекаем первое число из подписи, поддерживая целые и дробные числа
+            first_word = message.caption.split()[0]
+            # Пробуем сначала преобразовать как есть (для целых чисел)
+            try:
+                km = float(first_word)
+            except ValueError:
+                # Если не получилось, пробуем заменить запятую на точку (для дробных)
+                km = float(first_word.replace(',', '.'))
             
             self.logger.info(f"Extracted distance from caption: {km} km")
             
