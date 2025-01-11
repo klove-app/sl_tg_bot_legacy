@@ -158,7 +158,7 @@ class MessageHandler(BaseHandler):
             else:
                 response += "\n\n👍 Так держать!"
             
-            # Генерируем изображение
+            # Генерируем изображение для любой дистанции
             self.logger.info("=== Starting image generation ===")
             self.logger.info(f"Parameters: km={km}, username={username}, date={date}")
             
@@ -331,7 +331,10 @@ class MessageHandler(BaseHandler):
             else:
                 response += "\n\n👍 Так держать!"
             
-            # Генерируем изображение
+            # Генерируем изображение для любой дистанции
+            self.logger.info("=== Starting image generation ===")
+            self.logger.info(f"Parameters: km={km}, username={username}, date={date}")
+            
             try:
                 self.logger.info(f"Attempting to generate image with username: {username}")
                 image_data = generate_achievement_image(km, username, date)
