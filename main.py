@@ -51,148 +51,156 @@ class MessageHandler(BaseHandler):
         self.logger.info("Message handlers registered successfully")
 
     def handle_message(self, message):
-        """Обрабатывает текстовые сообщения"""
-        self.log_message(message, "text")
+        """Обработчик текстовых сообщений"""
+        self.logger.info(f"Processing message: {message.text}")
+        self.logger.info(f"Chat type: {message.chat.type}, Chat ID: {message.chat.id}")
         
-        # Проверяем, что сообщение адресовано боту
-        is_bot_mentioned = False
-        if message.reply_to_message and message.reply_to_message.from_user.id == self.bot.get_me().id:
-            is_bot_mentioned = True
-        elif self.bot.get_me().username and f"@{self.bot.get_me().username}" in message.text:
-            is_bot_mentioned = True
-        elif message.chat.type == 'private':
-            is_bot_mentioned = True
+        # Проверяем, содержит ли сообщение число
+        try:
+            # Извлекаем первое число из сообщения
+            km_str = message.text.split()[0].replace(',', '.')
+            km = float(km_str)
             
-        # Если сообщение не адресовано боту - игнорируем
-        if not is_bot_mentioned:
-            return
-        
-        # Пытаемся найти число в сообщении
-        match = re.search(r'(\d+[.,]?\d*)', message.text)
-        if match:
-            try:
-                km_str = match.group(1).replace(',', '.')
-                km = float(km_str)
-                
-                if km <= 0:
-                    self.bot.reply_to(
-                        message,
-                        "⚠️ *Некорректная дистанция*\n\n"
-                        "Пожалуйста, укажите положительное число километров",
-                        parse_mode='Markdown'
-                    )
-                    return
-                    
-                user_id = str(message.from_user.id)
-                chat_id = str(message.chat.id)
-                
-                # Получаем или создаем пользователя
-                user = User.get_by_id(user_id)
-                if not user:
-                    username = message.from_user.username or message.from_user.first_name
-                    user = User.create(user_id=user_id, username=username)
-                    self.logger.info(f"Created new user: {username} ({user_id})")
-                
-                # Добавляем запись о пробежке
-                success = RunningLog.add_entry(
-                    user_id=user_id,
-                    km=km,
-                    date_added=datetime.now().date(),
-                    notes=message.text,
-                    chat_id=chat_id
-                )
-                
-                if success:
-                    # Получаем статистику
-                    total_km = RunningLog.get_user_total_km(user_id)
-                    year_stats = user.get_yearly_stats(datetime.now().year)
-                    month_stats = user.get_monthly_stats(datetime.now().year, datetime.now().month)
-                    
-                    # Формируем прогресс-бар для годовой цели
-                    if user.goal_km and user.goal_km > 0:
-                        progress = (total_km / user.goal_km * 100)
-                        progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
-                        remaining = user.goal_km - total_km
-                    
-                    # Формируем ответное сообщение
-                    response = (
-                        f"🎉 *Новая пробежка записана!*\n"
-                        f"╭────────────────────╮\n"
-                        f"│ 📍 {km:.1f} км\n"
-                        f"│ 📅 {datetime.now().strftime('%d.%m.%Y')}\n"
-                        f"╰────────────────────╯\n\n"
-                        
-                        f"📊 *Статистика {calendar.month_name[datetime.now().month]}:*\n"
-                        f"╭────────────────────╮\n"
-                        f"│ 🏃 {month_stats['runs_count']} пробежек\n"
-                        f"│ 📏 {month_stats['total_km']:.1f} км всего\n"
-                        f"│ ⌀ {month_stats['avg_km']:.1f} км в среднем\n"
-                        f"╰────────────────────╯\n\n"
-                        
-                        f"📈 *Статистика {datetime.now().year}:*\n"
-                        f"╭────────────────────╮\n"
-                        f"│ 🏃 {year_stats['runs_count']} пробежек\n"
-                        f"│ 📏 {year_stats['total_km']:.1f} км всего\n"
-                        f"│ ⌀ {year_stats['avg_km']:.1f} км в среднем\n"
-                        f"╰────────────────────╯"
-                    )
-                    
-                    # Добавляем информацию о годовой цели, если она установлена
-                    if user.goal_km and user.goal_km > 0:
-                        response += (
-                            f"\n\n🎯 *Годовая цель:*\n"
-                            f"╭────────────────────╮\n"
-                            f"│ 🎪 {user.goal_km:.0f} км\n"
-                            f"│ ▸ {progress_bar} {progress:.1f}%\n"
-                            f"│ 📍 Осталось: {remaining:.1f} км\n"
-                            f"╰────────────────────╯"
-                        )
-                    else:
-                        response += (
-                            f"\n\n💡 *Совет:*\n"
-                            f"╭────────────────────╮\n"
-                            f"│ Установите годовую цель\n"
-                            f"│ командой /setgoal\n"
-                            f"╰────────────────────╯"
-                        )
-                    
-                    # Добавляем мотивационное сообщение
-                    if km > 10:
-                        response += "\n\n🔥 Отличная длительная пробежка!"
-                    elif km > 5:
-                        response += "\n\n💪 Хорошая тренировка!"
-                    else:
-                        response += "\n\n👍 Так держать!"
-                    
-                    self.bot.reply_to(message, response, parse_mode='HTML')
-                    self.logger.info(f"Logged run: {km}km for user {user_id}")
-                else:
-                    error_message = (
-                        "⚠️ *Не удалось сохранить пробежку*\n\n"
-                        "Пожалуйста, попробуйте еще раз или обратитесь к администратору"
-                    )
-                    self.bot.reply_to(message, error_message, parse_mode='Markdown')
-                    self.logger.error(f"Failed to save run for user {user_id}")
-                return
-                
-            except ValueError:
+            self.logger.info(f"Extracted distance: {km} km")
+            
+            if km <= 0:
+                self.logger.warning(f"Invalid distance: {km} km")
                 self.bot.reply_to(
                     message,
-                    "⚠️ *Некорректный формат*\n\n"
-                    "Пример: `5.2` или `5,2`",
+                    "⚠️ *Некорректная дистанция*\n\n"
+                    "Пожалуйста, укажите положительное число километров",
                     parse_mode='Markdown'
                 )
                 return
-            except Exception as e:
-                self.logger.error(f"Error saving run: {e}")
-                self.logger.error(f"Full traceback: {traceback.format_exc()}")
+                
+            user_id = str(message.from_user.id)
+            chat_id = str(message.chat.id)
+            chat_type = message.chat.type
+            
+            self.logger.info(f"User ID: {user_id}, Chat ID: {chat_id}, Chat Type: {chat_type}")
+            
+            # Получаем или создаем пользователя
+            user = User.get_by_id(user_id)
+            self.logger.debug(f"Found user: {user}")
+            
+            if not user:
+                username = message.from_user.username or message.from_user.first_name
+                self.logger.info(f"Creating new user: {username}")
+                user = User.create(user_id=user_id, username=username)
+                self.logger.info(f"Created new user: {username} ({user_id})")
+            
+            # Добавляем запись о пробежке
+            self.logger.info(f"Adding run entry: {km} km")
+            success = RunningLog.add_entry(
+                user_id=user_id,
+                km=km,
+                date_added=datetime.now().date(),
+                notes=message.text,
+                chat_id=chat_id,
+                chat_type=chat_type
+            )
+            
+            if success:
+                self.logger.info("Run entry added successfully")
+                # Получаем статистику
+                total_km = RunningLog.get_user_total_km(user_id)
+                self.logger.debug(f"Total km: {total_km}")
+                
+                current_year = datetime.now().year
+                current_month = datetime.now().month
+                
+                year_stats = RunningLog.get_user_stats(user_id, current_year)
+                self.logger.debug(f"Year stats: {year_stats}")
+                
+                month_stats = RunningLog.get_user_stats(user_id, current_year, current_month)
+                self.logger.debug(f"Month stats: {month_stats}")
+                
+                # Формируем прогресс-бар для годовой цели
+                if user.goal_km and user.goal_km > 0:
+                    progress = (total_km / user.goal_km * 100)
+                    progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
+                    remaining = user.goal_km - total_km
+                
+                # Формируем ответное сообщение
+                response = (
+                    f"🎉 *Новая пробежка записана!*\n"
+                    f"╭────────────────────╮\n"
+                    f"│ 📍 {km:.1f} км\n"
+                    f"│ 📅 {datetime.now().strftime('%d.%m.%Y')}\n"
+                    f"╰────────────────────╯\n\n"
+                    
+                    f"📊 *Статистика {calendar.month_name[datetime.now().month]}:*\n"
+                    f"╭────────────────────╮\n"
+                    f"│ 🏃 {month_stats['runs_count']} пробежек\n"
+                    f"│ 📏 {month_stats['total_km']:.1f} км всего\n"
+                    f"│ ⌀ {month_stats['avg_km']:.1f} км в среднем\n"
+                    f"╰────────────────────╯\n\n"
+                    
+                    f"📈 *Статистика {datetime.now().year}:*\n"
+                    f"╭────────────────────╮\n"
+                    f"│ 🏃 {year_stats['runs_count']} пробежек\n"
+                    f"│ 📏 {year_stats['total_km']:.1f} км всего\n"
+                    f"│ ⌀ {year_stats['avg_km']:.1f} км в среднем\n"
+                    f"╰────────────────────╯"
+                )
+                
+                # Добавляем информацию о годовой цели, если она установлена
+                if user.goal_km and user.goal_km > 0:
+                    response += (
+                        f"\n\n🎯 *Годовая цель:*\n"
+                        f"╭────────────────────╮\n"
+                        f"│ 🎪 {user.goal_km:.0f} км\n"
+                        f"│ ▸ {progress_bar} {progress:.1f}%\n"
+                        f"│ 📍 Осталось: {remaining:.1f} км\n"
+                        f"╰────────────────────╯"
+                    )
+                else:
+                    response += (
+                        f"\n\n💡 *Совет:*\n"
+                        f"╭────────────────────╮\n"
+                        f"│ Установите годовую цель\n"
+                        f"│ командой /setgoal\n"
+                        f"╰────────────────────╯"
+                    )
+                
+                # Добавляем мотивационное сообщение
+                if km > 10:
+                    response += "\n\n🔥 Отличная длительная пробежка!"
+                elif km > 5:
+                    response += "\n\n💪 Хорошая тренировка!"
+                else:
+                    response += "\n\n👍 Так держать!"
+                
+                self.bot.reply_to(message, response, parse_mode='Markdown')
+                self.logger.info(f"Logged run: {km}km for user {user_id}")
+            else:
+                self.logger.error(f"Failed to save run for user {user_id}")
                 error_message = (
-                    "😔 *Произошла ошибка*\n\n"
-                    "Пожалуйста, попробуйте позже или обратитесь к администратору"
+                    "⚠️ *Не удалось сохранить пробежку*\n\n"
+                    "Пожалуйста, попробуйте еще раз или обратитесь к администратору"
                 )
                 self.bot.reply_to(message, error_message, parse_mode='Markdown')
-                return
-        
+            return
+                
+        except ValueError:
+            self.logger.warning(f"Invalid message format: {message.text}")
+            self.bot.reply_to(
+                message,
+                "⚠️ *Некорректный формат*\n\n"
+                "Пример: `5.2` или `5,2`",
+                parse_mode='Markdown'
+            )
+            return
+        except Exception as e:
+            self.logger.error(f"Error saving run: {e}")
+            self.logger.error(f"Full traceback: {traceback.format_exc()}")
+            error_message = (
+                "😔 *Произошла ошибка*\n\n"
+                "Пожалуйста, попробуйте позже или обратитесь к администратору"
+            )
+            self.bot.reply_to(message, error_message, parse_mode='Markdown')
+            return
+            
         # Если сообщение в личном чате и не содержит число
         if message.chat.type == 'private':
             help_message = (
@@ -209,48 +217,29 @@ class MessageHandler(BaseHandler):
             self.bot.reply_to(message, help_message, parse_mode='Markdown')
 
     def handle_photo_run(self, message):
-        """Обработка фотографий с подписью"""
-        self.log_message(message, "photo")
+        """Обработчик фотографий с подписью"""
+        self.logger.info(f"Processing photo message with caption: {message.caption}")
+        self.logger.info(f"Chat type: {message.chat.type}, Chat ID: {message.chat.id}")
+        
+        if not message.caption:
+            self.logger.warning("No caption provided with photo")
+            self.bot.reply_to(
+                message,
+                "⚠️ *Добавьте подпись с километражем*\n\n"
+                "Пример: `5.2` или `5.2 Утренняя пробежка`",
+                parse_mode='Markdown'
+            )
+            return
+            
         try:
-            # Проверяем, что фото адресовано боту
-            is_bot_mentioned = False
-            if message.reply_to_message and message.reply_to_message.from_user.id == self.bot.get_me().id:
-                is_bot_mentioned = True
-            elif self.bot.get_me().username and message.caption and f"@{self.bot.get_me().username}" in message.caption:
-                is_bot_mentioned = True
-            elif message.chat.type == 'private':
-                is_bot_mentioned = True
-
-            # Если фото не адресовано боту - игнорируем
-            if not is_bot_mentioned:
-                return
-                
-            if not message.caption:
-                help_message = (
-                    "*📸 Как добавить пробежку с фото:*\n"
-                    "<pre>━━━━━━━━━━━━━━━━━━━━━━</pre>\n\n"
-                    "1. Прикрепите фото\n"
-                    "2. Добавьте подпись с дистанцией\n"
-                    "Пример: `5.2 км Вечерняя пробежка`"
-                )
-                self.bot.reply_to(message, help_message, parse_mode='HTML')
-                return
-                
-            # Ищем число в подписи
-            match = re.search(r'(\d+[.,]?\d*)', message.caption)
-            if not match:
-                help_message = (
-                    "⚠️ *Не найдена дистанция в подписи*\n\n"
-                    "Добавьте к фото подпись с километражем\n"
-                    "Пример: `5.2 км Вечерняя пробежка`"
-                )
-                self.bot.reply_to(message, help_message, parse_mode='Markdown')
-                return
-                
-            km_str = match.group(1).replace(',', '.')
+            # Извлекаем первое число из подписи
+            km_str = message.caption.split()[0].replace(',', '.')
             km = float(km_str)
             
+            self.logger.info(f"Extracted distance from caption: {km} km")
+            
             if km <= 0:
+                self.logger.warning(f"Invalid distance: {km} km")
                 self.bot.reply_to(
                     message,
                     "⚠️ *Некорректная дистанция*\n\n"
@@ -261,28 +250,45 @@ class MessageHandler(BaseHandler):
                 
             user_id = str(message.from_user.id)
             chat_id = str(message.chat.id)
+            chat_type = message.chat.type
+            
+            self.logger.info(f"User ID: {user_id}, Chat ID: {chat_id}, Chat Type: {chat_type}")
             
             # Получаем или создаем пользователя
             user = User.get_by_id(user_id)
+            self.logger.debug(f"Found user: {user}")
+            
             if not user:
                 username = message.from_user.username or message.from_user.first_name
+                self.logger.info(f"Creating new user: {username}")
                 user = User.create(user_id=user_id, username=username)
                 self.logger.info(f"Created new user: {username} ({user_id})")
             
             # Добавляем запись о пробежке
+            self.logger.info(f"Adding run entry with photo: {km} km")
             success = RunningLog.add_entry(
                 user_id=user_id,
                 km=km,
                 date_added=datetime.now().date(),
                 notes=message.caption,
-                chat_id=chat_id
+                chat_id=chat_id,
+                chat_type=chat_type
             )
             
             if success:
+                self.logger.info("Run entry with photo added successfully")
                 # Получаем статистику
                 total_km = RunningLog.get_user_total_km(user_id)
-                year_stats = user.get_yearly_stats(datetime.now().year)
-                month_stats = user.get_monthly_stats(datetime.now().year, datetime.now().month)
+                self.logger.debug(f"Total km: {total_km}")
+                
+                current_year = datetime.now().year
+                current_month = datetime.now().month
+                
+                year_stats = RunningLog.get_user_stats(user_id, current_year)
+                self.logger.debug(f"Year stats: {year_stats}")
+                
+                month_stats = RunningLog.get_user_stats(user_id, current_year, current_month)
+                self.logger.debug(f"Month stats: {month_stats}")
                 
                 # Формируем прогресс-бар для годовой цели
                 if user.goal_km and user.goal_km > 0:
@@ -340,17 +346,19 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
-                self.bot.reply_to(message, response, parse_mode='HTML')
+                self.bot.reply_to(message, response, parse_mode='Markdown')
                 self.logger.info(f"Logged run with photo: {km}km for user {user_id}")
             else:
+                self.logger.error(f"Failed to save run with photo for user {user_id}")
                 error_message = (
                     "⚠️ *Не удалось сохранить пробежку*\n\n"
                     "Пожалуйста, попробуйте еще раз или обратитесь к администратору"
                 )
                 self.bot.reply_to(message, error_message, parse_mode='Markdown')
-                self.logger.error(f"Failed to save run with photo for user {user_id}")
+            return
                 
         except ValueError:
+            self.logger.warning(f"Invalid caption format: {message.caption}")
             self.bot.reply_to(
                 message,
                 "⚠️ *Некорректный формат числа*\n\n"
