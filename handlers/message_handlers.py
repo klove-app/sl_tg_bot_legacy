@@ -121,32 +121,29 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
-                # Для пробежек от 5 км генерируем изображение
-                if km >= 5:
-                    try:
-                        from main import generate_achievement_image
-                        from io import BytesIO
-                        
-                        username = message.from_user.username or message.from_user.first_name
-                        date = datetime.now().strftime('%d.%m.%Y')
-                        
-                        image_data = generate_achievement_image(km, username, date)
-                        if image_data:
-                            photo = BytesIO(image_data)
-                            photo.name = 'achievement.png'
-                            self.bot.send_photo(
-                                message.chat.id,
-                                photo,
-                                caption=response,
-                                parse_mode='Markdown',
-                                reply_to_message_id=message.message_id
-                            )
-                        else:
-                            self.bot.reply_to(message, response, parse_mode='Markdown')
-                    except Exception as e:
-                        self.logger.error(f"Ошибка при генерации изображения: {e}")
+                # Генерируем изображение для любой дистанции
+                try:
+                    from main import generate_achievement_image
+                    from io import BytesIO
+                    
+                    username = message.from_user.username or message.from_user.first_name
+                    date = datetime.now().strftime('%d.%m.%Y')
+                    
+                    image_data = generate_achievement_image(km, username, date)
+                    if image_data:
+                        photo = BytesIO(image_data)
+                        photo.name = 'achievement.png'
+                        self.bot.send_photo(
+                            message.chat.id,
+                            photo,
+                            caption=response,
+                            parse_mode='Markdown',
+                            reply_to_message_id=message.message_id
+                        )
+                    else:
                         self.bot.reply_to(message, response, parse_mode='Markdown')
-                else:
+                except Exception as e:
+                    self.logger.error(f"Ошибка при генерации изображения: {e}")
                     self.bot.reply_to(message, response, parse_mode='Markdown')
                 
                 self.logger.info(f"Logged run: {km}km for user {message.from_user.id}")
@@ -292,32 +289,29 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
-                # Для пробежек от 5 км генерируем изображение
-                if km >= 5:
-                    try:
-                        from main import generate_achievement_image
-                        from io import BytesIO
-                        
-                        username = message.from_user.username or message.from_user.first_name
-                        date = datetime.now().strftime('%d.%m.%Y')
-                        
-                        image_data = generate_achievement_image(km, username, date)
-                        if image_data:
-                            photo = BytesIO(image_data)
-                            photo.name = 'achievement.png'
-                            self.bot.send_photo(
-                                message.chat.id,
-                                photo,
-                                caption=response,
-                                parse_mode='Markdown',
-                                reply_to_message_id=message.message_id
-                            )
-                        else:
-                            self.bot.reply_to(message, response, parse_mode='Markdown')
-                    except Exception as e:
-                        self.logger.error(f"Ошибка при генерации изображения: {e}")
+                # Генерируем изображение для любой дистанции
+                try:
+                    from main import generate_achievement_image
+                    from io import BytesIO
+                    
+                    username = message.from_user.username or message.from_user.first_name
+                    date = datetime.now().strftime('%d.%m.%Y')
+                    
+                    image_data = generate_achievement_image(km, username, date)
+                    if image_data:
+                        photo = BytesIO(image_data)
+                        photo.name = 'achievement.png'
+                        self.bot.send_photo(
+                            message.chat.id,
+                            photo,
+                            caption=response,
+                            parse_mode='Markdown',
+                            reply_to_message_id=message.message_id
+                        )
+                    else:
                         self.bot.reply_to(message, response, parse_mode='Markdown')
-                else:
+                except Exception as e:
+                    self.logger.error(f"Ошибка при генерации изображения: {e}")
                     self.bot.reply_to(message, response, parse_mode='Markdown')
                 
                 self.logger.info(f"Logged run with photo: {km}km for user {user_id}")
