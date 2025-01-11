@@ -35,6 +35,14 @@ class MessageHandler(BaseHandler):
         """Обрабатывает текстовые сообщения"""
         self.log_message(message, "text")
         
+        # Определяем username и date в начале функции
+        username = message.from_user.username or message.from_user.first_name
+        if not username:
+            username = "Anonymous"
+            self.logger.info("Username not available, using 'Anonymous'")
+        date = datetime.now().strftime('%d.%m.%Y')
+        self.logger.info(f"Username: {username}, Date: {date}")
+        
         try:
             # Очищаем текст от упоминания бота
             text = message.text
@@ -132,17 +140,6 @@ class MessageHandler(BaseHandler):
                 
                 try:
                     self.logger.info("Preparing to generate achievement image")
-                    
-                    # Определяем username
-                    username = message.from_user.username or message.from_user.first_name
-                    if not username:
-                        username = "Anonymous"
-                    self.logger.info(f"Username determined: {username}")
-                    
-                    # Определяем date
-                    date = datetime.now().strftime('%d.%m.%Y')
-                    self.logger.info(f"Date formatted: {date}")
-                    
                     self.logger.info(f"Calling generate_achievement_image with: km={km}, username={username}, date={date}")
                     image_data = generate_achievement_image(km, username, date)
                     self.logger.info("Image generation call completed")
