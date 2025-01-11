@@ -123,6 +123,10 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
+                self.logger.info("=== Starting image generation block ===")
+                self.logger.info(f"Message from user: {message.from_user.id}")
+                self.logger.info(f"Distance: {km} km")
+                
                 try:
                     self.logger.info("Preparing to generate achievement image")
                     
@@ -312,8 +316,14 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
+                self.logger.info("=== Starting image generation block ===")
+                self.logger.info(f"Message from user: {message.from_user.id}")
+                self.logger.info(f"Distance: {km} km")
+                
                 try:
-                    # Определяем username внутри блока try
+                    self.logger.info("Preparing to generate achievement image")
+                    
+                    # Определяем username
                     username = message.from_user.username
                     if not username:
                         username = message.from_user.first_name
