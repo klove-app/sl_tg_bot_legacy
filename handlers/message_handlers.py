@@ -3,8 +3,10 @@ from database.models.user import User
 from database.models.running_log import RunningLog
 from datetime import datetime
 from handlers.base_handler import BaseHandler
-from main import generate_achievement_image
+from main import generate_achievement_image, add_watermark
+from io import BytesIO
 import traceback
+import re
 
 class MessageHandler(BaseHandler):
     def register(self):
@@ -31,10 +33,6 @@ class MessageHandler(BaseHandler):
 
     def handle_text(self, message: Message):
         """Обрабатывает текстовые сообщения"""
-        from main import generate_achievement_image
-        from io import BytesIO
-        import re
-        
         self.log_message(message, "text")
         
         try:
@@ -125,19 +123,19 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
-                # Генерируем изображение для любой дистанции
-                username = message.from_user.username
-                self.logger.info(f"Username from message.from_user.username: {username}")
+                # Определяем username и date для генерации изображения
+                username = message.from_user.username or message.from_user.first_name
+                self.logger.info(f"Username: {username}")
                 
                 if not username:
-                    username = message.from_user.first_name
-                    self.logger.info(f"Username from message.from_user.first_name: {username}")
+                    username = "Anonymous"
+                    self.logger.info("Using default username: Anonymous")
                 
                 date = datetime.now().strftime('%d.%m.%Y')
-                self.logger.info(f"Final username: {username}, date: {date}")
+                self.logger.info(f"Date: {date}")
                 
                 try:
-                    self.logger.info(f"Attempting to generate image with: km={km}, username={username}, date={date}")
+                    self.logger.info(f"Generating image with: km={km}, username={username}, date={date}")
                     image_data = generate_achievement_image(km, username, date)
                     if image_data:
                         photo = BytesIO(image_data)
@@ -150,9 +148,10 @@ class MessageHandler(BaseHandler):
                             reply_to_message_id=message.message_id
                         )
                     else:
+                        self.logger.error("Failed to generate image")
                         self.bot.reply_to(message, response, parse_mode='Markdown')
                 except Exception as e:
-                    self.logger.error(f"Ошибка при генерации изображения: {e}")
+                    self.logger.error(f"Error generating image: {e}")
                     self.logger.error(traceback.format_exc())
                     self.bot.reply_to(message, response, parse_mode='Markdown')
                 
@@ -174,9 +173,6 @@ class MessageHandler(BaseHandler):
 
     def handle_photo_run(self, message):
         """Обработчик фотографий с подписью"""
-        from main import add_watermark
-        from io import BytesIO
-        
         self.logger.info(f"Processing photo message with caption: {message.caption}")
         self.logger.info(f"Chat type: {message.chat.type}, Chat ID: {message.chat.id}")
         
@@ -309,18 +305,18 @@ class MessageHandler(BaseHandler):
                     response += "\n\n👍 Так держать!"
                 
                 # Определяем username и date для генерации изображения
-                username = message.from_user.username
-                self.logger.info(f"Username from message.from_user.username: {username}")
+                username = message.from_user.username or message.from_user.first_name
+                self.logger.info(f"Username: {username}")
                 
                 if not username:
-                    username = message.from_user.first_name
-                    self.logger.info(f"Username from message.from_user.first_name: {username}")
+                    username = "Anonymous"
+                    self.logger.info("Using default username: Anonymous")
                 
                 date = datetime.now().strftime('%d.%m.%Y')
-                self.logger.info(f"Final username: {username}, date: {date}")
+                self.logger.info(f"Date: {date}")
                 
                 try:
-                    self.logger.info(f"Attempting to generate image with: km={km}, username={username}, date={date}")
+                    self.logger.info(f"Generating image with: km={km}, username={username}, date={date}")
                     image_data = generate_achievement_image(km, username, date)
                     if image_data:
                         photo = BytesIO(image_data)
@@ -333,6 +329,7 @@ class MessageHandler(BaseHandler):
                             reply_to_message_id=message.message_id
                         )
                     else:
+                        self.logger.error("Failed to generate image")
                         self.bot.reply_to(message, response, parse_mode='Markdown')
                 except Exception as e:
                     self.logger.error(f"Error generating image: {e}")
