@@ -248,13 +248,15 @@ def generate_achievement_image(distance, username, date):
             
         # Получаем base64 изображения
         image_data = data["artifacts"][0]["base64"]
+        
+        # Декодируем base64 в байты
         image_bytes = base64.b64decode(image_data)
         
-        # Форматируем тексты для водяного знака
-        info_text = f"{username} • {date}"
-        distance_text = f"{distance:.1f} km"
-        distance_x = 650  # Позиция для текста с дистанцией
+        # Формируем тексты для водяных знаков
+        info_text = f"{username} • {date}"  # Имя пользователя и дата
         brand_text = "Бег: свои люди"  # Название чата
+        distance_text = f"{distance:.1f} км"  # Дистанция
+        distance_x = 0  # Позиция текста с дистанцией (будет вычислена в add_watermark)
         
         # Добавляем водяной знак
         logger.info("Добавляем водяной знак")
@@ -266,14 +268,8 @@ def generate_achievement_image(distance, username, date):
             
         return final_image
         
-    except requests.exceptions.Timeout:
-        logger.error("Таймаут при запросе к API")
-        return None
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Ошибка при запросе к API: {e}")
-        return None
     except Exception as e:
-        logger.error(f"Неожиданная ошибка: {e}")
+        logger.error(f"Ошибка при генерации изображения: {e}")
         logger.error(traceback.format_exc())
         return None
 
