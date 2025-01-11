@@ -124,12 +124,14 @@ class MessageHandler(BaseHandler):
                 # Для пробежек от 5 км генерируем изображение
                 if km >= 5:
                     try:
+                        from main import generate_achievement_image
+                        from io import BytesIO
+                        
                         username = message.from_user.username or message.from_user.first_name
                         date = datetime.now().strftime('%d.%m.%Y')
-                        from main import generate_achievement_image
+                        
                         image_data = generate_achievement_image(km, username, date)
                         if image_data:
-                            from io import BytesIO
                             photo = BytesIO(image_data)
                             photo.name = 'achievement.png'
                             self.bot.send_photo(
@@ -293,12 +295,14 @@ class MessageHandler(BaseHandler):
                 # Для пробежек от 5 км генерируем изображение
                 if km >= 5:
                     try:
+                        from main import generate_achievement_image
+                        from io import BytesIO
+                        
                         username = message.from_user.username or message.from_user.first_name
                         date = datetime.now().strftime('%d.%m.%Y')
-                        from main import generate_achievement_image
+                        
                         image_data = generate_achievement_image(km, username, date)
                         if image_data:
-                            from io import BytesIO
                             photo = BytesIO(image_data)
                             photo.name = 'achievement.png'
                             self.bot.send_photo(
