@@ -35,6 +35,17 @@ class MessageHandler(BaseHandler):
         """Обрабатывает текстовые сообщения"""
         self.log_message(message, "text")
         
+        # Определяем username и date в начале функции
+        username = message.from_user.username or message.from_user.first_name
+        self.logger.info(f"Username from message: {username}")
+        
+        if not username:
+            username = "Anonymous"
+            self.logger.info("Using default username: Anonymous")
+        
+        date = datetime.now().strftime('%d.%m.%Y')
+        self.logger.info(f"Date for image: {date}")
+        
         try:
             # Очищаем текст от упоминания бота
             text = message.text
@@ -123,17 +134,6 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
-                # Определяем username и date для генерации изображения
-                username = message.from_user.username or message.from_user.first_name
-                self.logger.info(f"Username from message: {username}")
-                
-                if not username:
-                    username = "Anonymous"
-                    self.logger.info("Using default username: Anonymous")
-                
-                date = datetime.now().strftime('%d.%m.%Y')
-                self.logger.info(f"Date for image: {date}")
-                
                 try:
                     self.logger.info(f"Starting image generation with: km={km}, username={username}, date={date}")
                     image_data = generate_achievement_image(km, username, date)
@@ -180,6 +180,17 @@ class MessageHandler(BaseHandler):
         """Обработчик фотографий с подписью"""
         self.logger.info(f"Processing photo message with caption: {message.caption}")
         self.logger.info(f"Chat type: {message.chat.type}, Chat ID: {message.chat.id}")
+        
+        # Определяем username и date в начале функции
+        username = message.from_user.username or message.from_user.first_name
+        self.logger.info(f"Username from message: {username}")
+        
+        if not username:
+            username = "Anonymous"
+            self.logger.info("Using default username: Anonymous")
+        
+        date = datetime.now().strftime('%d.%m.%Y')
+        self.logger.info(f"Date for image: {date}")
         
         # Проверяем, что фото адресовано боту
         is_bot_mentioned = False
@@ -309,23 +320,16 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
-                # Определяем username и date для генерации изображения
-                username = message.from_user.username or message.from_user.first_name
-                self.logger.info(f"Username: {username}")
-                
-                if not username:
-                    username = "Anonymous"
-                    self.logger.info("Using default username: Anonymous")
-                
-                date = datetime.now().strftime('%d.%m.%Y')
-                self.logger.info(f"Date: {date}")
-                
                 try:
-                    self.logger.info(f"Generating image with: km={km}, username={username}, date={date}")
+                    self.logger.info(f"Starting image generation with: km={km}, username={username}, date={date}")
                     image_data = generate_achievement_image(km, username, date)
+                    self.logger.info("Image generation completed")
+                    
                     if image_data:
+                        self.logger.info("Image data received, creating BytesIO")
                         photo = BytesIO(image_data)
                         photo.name = 'achievement.png'
+                        self.logger.info("Sending photo with caption")
                         self.bot.send_photo(
                             message.chat.id,
                             photo,
@@ -333,11 +337,12 @@ class MessageHandler(BaseHandler):
                             parse_mode='Markdown',
                             reply_to_message_id=message.message_id
                         )
+                        self.logger.info("Photo sent successfully")
                     else:
-                        self.logger.error("Failed to generate image")
+                        self.logger.error("Image data is None")
                         self.bot.reply_to(message, response, parse_mode='Markdown')
                 except Exception as e:
-                    self.logger.error(f"Error generating image: {e}")
+                    self.logger.error(f"Error in image generation/sending: {e}")
                     self.logger.error(traceback.format_exc())
                     self.bot.reply_to(message, response, parse_mode='Markdown')
                 
