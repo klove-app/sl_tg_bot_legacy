@@ -21,7 +21,16 @@ from database.base import Base, engine, SessionLocal
 from database.logger import logger
 from database.models.user import User
 from database.models.running_log import RunningLog
-from config.config import TOKEN, ADMIN_IDS, DATABASE_NAME, DATABASE_URL, STABILITY_API_HOST, STABILITY_API_KEY, STABLE_DIFFUSION_ENGINE_ID
+import config.config as cfg
+
+# Используем переменные из конфига
+TOKEN = cfg.TOKEN
+ADMIN_IDS = cfg.ADMIN_IDS
+DATABASE_NAME = cfg.DATABASE_NAME
+DATABASE_URL = cfg.DATABASE_URL
+STABLE_DIFFUSION_API_URL = cfg.STABLE_DIFFUSION_API_URL
+STABLE_DIFFUSION_API_KEY = cfg.STABLE_DIFFUSION_API_KEY
+STABLE_DIFFUSION_ENGINE_ID = cfg.STABLE_DIFFUSION_ENGINE_ID
 
 # Импортируем обработчики
 from handlers.chat_handlers import register_chat_handlers
@@ -221,12 +230,12 @@ def generate_achievement_image(distance, username, date):
         logger.info(f"Сгенерирован промпт: {prompt}")
         
         # Формируем запрос к API
-        url = f"{STABILITY_API_HOST}/v1/generation/{STABLE_DIFFUSION_ENGINE_ID}/text-to-image"
+        url = STABLE_DIFFUSION_API_URL
         
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "Authorization": f"Bearer {STABILITY_API_KEY}"
+            "Authorization": f"Bearer {STABLE_DIFFUSION_API_KEY}"
         }
         
         payload = {
