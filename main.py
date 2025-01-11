@@ -283,9 +283,12 @@ class MessageHandler(BaseHandler):
         
         # Регистрируем обработчик текстовых сообщений
         self.bot.register_message_handler(
-            self.handle_message,
+            self.handle_text,
             content_types=['text'],
-            func=lambda message: not message.text.startswith('/')
+            func=lambda message: (
+                message.chat.type == 'private' or
+                (self.bot.get_me().username and f"@{self.bot.get_me().username}" in message.text)
+            )
         )
         
         # Регистрируем обработчик фото
@@ -296,7 +299,7 @@ class MessageHandler(BaseHandler):
         
         self.logger.info("Message handlers registered successfully")
 
-    def handle_message(self, message):
+    def handle_text(self, message):
         """Обработчик текстовых сообщений"""
         self.logger.info(f"Processing message: {message.text}")
         self.logger.info(f"Chat type: {message.chat.type}, Chat ID: {message.chat.id}")
