@@ -240,55 +240,42 @@ def generate_achievement_image(distance, username, date):
         logger.info("Payload prepared")
         
         logger.info("Sending request to Stability AI")
-        try:
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
-            logger.info(f"Response status code: {response.status_code}")
-            
-            if response.status_code != 200:
-                logger.error(f"API request failed with status code: {response.status_code}")
-                logger.error(f"Response text: {response.text}")
-                return None
-                
-            data = response.json()
-            logger.info("Response JSON parsed")
-            
-            # Получаем base64 изображения
-            image_data = data["artifacts"][0]["base64"]
-            logger.info("Got base64 image data")
-            
-            image_bytes = base64.b64decode(image_data)
-            logger.info("Decoded base64 to bytes")
-            
-            # Форматируем текст для водяного знака
-            info_text = f"{username} • {date}"
-            logger.info(f"Formatted info text: {info_text}")
-            
-            distance_text = f"{distance:.1f} км"
-            logger.info(f"Formatted distance text: {distance_text}")
-            
-            distance_x = 0  # Позиция будет вычислена в add_watermark
-            brand_text = "Бег: свои люди"
-            
-            logger.info("Adding watermark")
-            final_image = add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
-            
-            if final_image:
-                logger.info("Image generated and watermarked successfully")
-                return final_image
-            else:
-                logger.error("Failed to add watermark")
-                return None
-                
-        except requests.exceptions.Timeout:
-            logger.error("API request timed out")
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        logger.info(f"Response status code: {response.status_code}")
+        
+        if response.status_code != 200:
+            logger.error(f"API request failed with status code: {response.status_code}")
+            logger.error(f"Response text: {response.text}")
             return None
-        except requests.exceptions.RequestException as e:
-            logger.error(f"API request failed: {e}")
+            
+        # Получаем изображение из ответа
+        response_json = response.json()
+        if 'artifacts' not in response_json:
+            logger.error("No artifacts in response")
+            return None
+            
+        image_data = base64.b64decode(response_json['artifacts'][0]['base64'])
+        logger.info("Image data decoded successfully")
+        
+        # Форматируем текст для водяных знаков
+        info_text = f"{username} • {date}"
+        distance_text = f"{distance:.1f} км"
+        brand_text = "Бег: свои люди"
+        
+        # Добавляем водяные знаки
+        logger.info("Adding watermarks to image")
+        final_image = add_watermark(image_data, info_text, brand_text, distance_text, 0)
+        
+        if final_image:
+            logger.info("Watermark added successfully")
+            return final_image
+        else:
+            logger.error("Failed to add watermark")
             return None
             
     except Exception as e:
         logger.error(f"Error generating image: {e}")
-        logger.error(f"Full traceback: {traceback.format_exc()}")
+        logger.error(traceback.format_exc())
         return None
 
 class PromptGenerator:
