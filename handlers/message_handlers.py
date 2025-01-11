@@ -128,6 +128,7 @@ class MessageHandler(BaseHandler):
                 self.logger.info("=== Starting image generation block ===")
                 self.logger.info(f"Message from user: {message.from_user.id}")
                 self.logger.info(f"Distance: {km} km")
+                self.logger.info("Response message prepared, attempting image generation")
                 
                 try:
                     self.logger.info("Preparing to generate achievement image")
@@ -138,15 +139,15 @@ class MessageHandler(BaseHandler):
                         username = message.from_user.first_name
                     if not username:
                         username = "Anonymous"
-                    self.logger.info(f"Using username: {username}")
+                    self.logger.info(f"Username determined: {username}")
                     
                     # Определяем date
                     date = datetime.now().strftime('%d.%m.%Y')
-                    self.logger.info(f"Using date: {date}")
+                    self.logger.info(f"Date formatted: {date}")
                     
                     self.logger.info(f"Calling generate_achievement_image with: km={km}, username={username}, date={date}")
                     image_data = generate_achievement_image(km, username, date)
-                    self.logger.info("Image generation completed")
+                    self.logger.info("Image generation call completed")
                     
                     if image_data:
                         self.logger.info("Image data received, creating BytesIO")
@@ -321,6 +322,7 @@ class MessageHandler(BaseHandler):
                 self.logger.info("=== Starting image generation block ===")
                 self.logger.info(f"Message from user: {message.from_user.id}")
                 self.logger.info(f"Distance: {km} km")
+                self.logger.info("Response message prepared, attempting image generation")
                 
                 try:
                     self.logger.info("Preparing to generate achievement image")
@@ -331,15 +333,15 @@ class MessageHandler(BaseHandler):
                         username = message.from_user.first_name
                     if not username:
                         username = "Anonymous"
-                    self.logger.info(f"Using username: {username}")
+                    self.logger.info(f"Username determined: {username}")
                     
                     # Определяем date
                     date = datetime.now().strftime('%d.%m.%Y')
-                    self.logger.info(f"Using date: {date}")
+                    self.logger.info(f"Date formatted: {date}")
                     
-                    self.logger.info(f"Starting image generation with: km={km}, username={username}, date={date}")
+                    self.logger.info(f"Calling generate_achievement_image with: km={km}, username={username}, date={date}")
                     image_data = generate_achievement_image(km, username, date)
-                    self.logger.info("Image generation completed")
+                    self.logger.info("Image generation call completed")
                     
                     if image_data:
                         self.logger.info("Image data received, creating BytesIO")
