@@ -157,7 +157,7 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         try:
             font_large = ImageFont.truetype(font_path, 60)  # Для километража
             font_medium = ImageFont.truetype(font_path, 30)  # Для имени и даты
-            font_brand = ImageFont.truetype(font_path, 40)   # Для названия бота
+            font_brand = ImageFont.truetype(font_path, 50)   # Для названия чата
         except Exception as e:
             logger.error(f"Ошибка при загрузке шрифтов: {e}")
             return None
@@ -165,18 +165,23 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         # Размеры изображения
         width, height = image.size
         
-        # Верхний водяной знак (название бота)
+        # Верхний водяной знак (название чата)
+        brand_text = "Бег: свои люди"  # Заменяем название бота на название чата
         brand_bbox = draw.textbbox((0, 0), brand_text, font=font_brand)
         brand_width = brand_bbox[2] - brand_bbox[0]
         brand_height = brand_bbox[3] - brand_bbox[1]
         
-        # Полупрозрачный фон для верхнего водяного знака
-        top_background = Image.new('RGBA', (width, brand_height + 40), (0, 0, 0, 120))
-        image.paste(top_background, (0, 0), top_background)
+        # Полупрозрачный фон только под текстом
+        padding = 20  # Отступ вокруг текста
+        top_background = Image.new('RGBA', (brand_width + padding * 2, brand_height + padding * 2), (0, 0, 0, 120))
         
-        # Рисуем название бота по центру вверху
-        brand_x = (width - brand_width) // 2
-        draw.text((brand_x, 20), brand_text, font=font_brand, fill='white')
+        # Размещаем в правом верхнем углу с отступом
+        top_x = width - brand_width - padding * 3  # Дополнительный отступ справа
+        top_y = padding
+        image.paste(top_background, (top_x, top_y), top_background)
+        
+        # Рисуем название чата
+        draw.text((top_x + padding, top_y + padding), brand_text, font=font_brand, fill='white')
         
         # Нижний водяной знак (имя и километраж)
         # Полупрозрачный фон для нижнего водяного знака
@@ -244,14 +249,13 @@ def generate_achievement_image(distance, username, date):
         image_bytes = base64.b64decode(image_data)
         
         # Форматируем тексты для водяного знака
-        brand_text = "Running Bot"
         info_text = f"{username} • {date}"
         distance_text = f"{distance:.1f} km"
         distance_x = 650  # Позиция для текста с дистанцией
         
         # Добавляем водяной знак
         logger.info("Добавляем водяной знак")
-        final_image = add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
+        final_image = add_watermark(image_bytes, info_text, "", distance_text, distance_x)
         
         if final_image is None:
             logger.error("Не удалось добавить водяной знак")
