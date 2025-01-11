@@ -32,8 +32,9 @@ class MessageHandler(BaseHandler):
         self.logger.info("Message handlers registered successfully")
 
     def handle_text(self, message: Message):
-        """Обрабатывает текстовые сообщения"""
-        self.log_message(message, "text")
+        """Обработчик текстовых сообщений"""
+        self.logger.info(f"Processing message: {message.text}")
+        self.logger.info(f"Chat type: {message.chat.type}, Chat ID: {message.chat.id}")
         
         # Определяем username и date в начале функции
         username = message.from_user.username or message.from_user.first_name
@@ -41,7 +42,7 @@ class MessageHandler(BaseHandler):
             username = "Anonymous"
             self.logger.info("Username not available, using 'Anonymous'")
         date = datetime.now().strftime('%d.%m.%Y')
-        self.logger.info(f"Username: {username}, Date: {date}")
+        self.logger.info(f"Username determined: {username}")
         
         try:
             # Очищаем текст от упоминания бота
