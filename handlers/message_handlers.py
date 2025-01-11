@@ -30,6 +30,10 @@ class MessageHandler(BaseHandler):
 
     def handle_text(self, message: Message):
         """Обрабатывает текстовые сообщения"""
+        from main import generate_achievement_image
+        from io import BytesIO
+        import re
+        
         self.log_message(message, "text")
         
         try:
@@ -39,7 +43,6 @@ class MessageHandler(BaseHandler):
                 text = text.replace(f"@{self.bot.get_me().username}", "").strip()
             
             # Ищем первое число в тексте (поддерживаем и точку, и запятую)
-            import re
             number_match = re.search(r'(\d+[.,]?\d*)', text)
             if not number_match:
                 if message.chat.type == 'private':
@@ -126,9 +129,6 @@ class MessageHandler(BaseHandler):
                 date = datetime.now().strftime('%d.%m.%Y')
                 
                 try:
-                    from main import generate_achievement_image
-                    from io import BytesIO
-                    
                     image_data = generate_achievement_image(km, username, date)
                     if image_data:
                         photo = BytesIO(image_data)
@@ -144,6 +144,7 @@ class MessageHandler(BaseHandler):
                         self.bot.reply_to(message, response, parse_mode='Markdown')
                 except Exception as e:
                     self.logger.error(f"Ошибка при генерации изображения: {e}")
+                    self.logger.error(traceback.format_exc())
                     self.bot.reply_to(message, response, parse_mode='Markdown')
                 
                 self.logger.info(f"Logged run: {km}km for user {message.from_user.id}")
@@ -164,6 +165,9 @@ class MessageHandler(BaseHandler):
 
     def handle_photo_run(self, message):
         """Обработчик фотографий с подписью"""
+        from main import add_watermark
+        from io import BytesIO
+        
         self.logger.info(f"Processing photo message with caption: {message.caption}")
         self.logger.info(f"Chat type: {message.chat.type}, Chat ID: {message.chat.id}")
         
@@ -302,9 +306,6 @@ class MessageHandler(BaseHandler):
                     downloaded_file = self.bot.download_file(file_info.file_path)
                     
                     # Добавляем водяные знаки
-                    from main import add_watermark
-                    from io import BytesIO
-                    
                     image_data = add_watermark(downloaded_file, info_text, "", distance_text, distance_x)
                     if image_data:
                         photo = BytesIO(image_data)
@@ -320,6 +321,7 @@ class MessageHandler(BaseHandler):
                         self.bot.reply_to(message, response, parse_mode='Markdown')
                 except Exception as e:
                     self.logger.error(f"Ошибка при обработке фото: {e}")
+                    self.logger.error(traceback.format_exc())
                     self.bot.reply_to(message, response, parse_mode='Markdown')
                 
                 self.logger.info(f"Logged run with photo: {km}km for user {user_id}")
