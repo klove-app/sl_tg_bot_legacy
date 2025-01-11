@@ -289,15 +289,24 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
-                # Генерируем изображение для любой дистанции
+                # Для фото пользователя добавляем водяные знаки
                 try:
-                    from main import generate_achievement_image
-                    from io import BytesIO
+                    # Получаем фото максимального размера
+                    file_info = self.bot.get_file(message.photo[-1].file_id)
+                    downloaded_file = self.bot.download_file(file_info.file_path)
                     
+                    # Добавляем водяные знаки
                     username = message.from_user.username or message.from_user.first_name
                     date = datetime.now().strftime('%d.%m.%Y')
                     
-                    image_data = generate_achievement_image(km, username, date)
+                    from main import add_watermark
+                    from io import BytesIO
+                    
+                    info_text = f"{username} • {date}"
+                    distance_text = f"{km:.1f} km"
+                    distance_x = 650
+                    
+                    image_data = add_watermark(downloaded_file, info_text, "", distance_text, distance_x)
                     if image_data:
                         photo = BytesIO(image_data)
                         photo.name = 'achievement.png'
@@ -311,7 +320,7 @@ class MessageHandler(BaseHandler):
                     else:
                         self.bot.reply_to(message, response, parse_mode='Markdown')
                 except Exception as e:
-                    self.logger.error(f"Ошибка при генерации изображения: {e}")
+                    self.logger.error(f"Ошибка при обработке фото: {e}")
                     self.bot.reply_to(message, response, parse_mode='Markdown')
                 
                 self.logger.info(f"Logged run with photo: {km}km for user {user_id}")
