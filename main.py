@@ -89,7 +89,7 @@ class PromptGenerator:
         "mystical ambiance", "enchanted atmosphere", "spiritual energy flow",
         "magical realism", "fantasy elements"
     ]
-
+    
     @classmethod
     def generate_prompt(cls, distance):
         """Генерирует промпт для изображения на основе дистанции"""
@@ -274,53 +274,6 @@ def generate_achievement_image(distance, username, date):
         logger.error(traceback.format_exc())
         return None
 
-def send_achievement_message(message, distance):
-    """Отправляет поздравительное сообщение с изображением"""
-    try:
-        # Получаем информацию о пользователе
-        username = message.from_user.username or message.from_user.first_name
-        date = datetime.now().strftime('%d.%m.%Y')
-        
-        # Пытаемся сгенерировать изображение
-        image_data = generate_achievement_image(distance, username, date)
-        
-        if image_data:
-            # Отправляем изображение
-            photo = BytesIO(image_data)
-            photo.name = 'achievement.png'
-            
-            # Формируем текст сообщения
-            if distance >= 42.2:
-                text = "🏆 *Поздравляем с марафоном!*\nЭто невероятное достижение! 🌟"
-            elif distance >= 21.1:
-                text = "🥈 *Отличный полумарафон!*\nВы превзошли себя! 💫"
-            elif distance >= 10:
-                text = "🌟 *Впечатляющая дистанция!*\nПродолжайте в том же духе! ✨"
-            else:
-                text = "👏 *Отличная пробежка!*\nКаждый шаг приближает к цели! 🌱"
-            
-            bot.send_photo(
-                message.chat.id,
-                photo,
-                caption=text,
-                parse_mode='Markdown',
-                reply_to_message_id=message.message_id
-            )
-            logger.info(f"Отправлено изображение достижения для {username}")
-        else:
-            # Отправляем текстовое сообщение без изображения
-            text = "🎉 *Поздравляем с достижением!*\n" + \
-                   f"Вы пробежали {distance:.1f} км! Так держать! 💪"
-            bot.reply_to(message, text, parse_mode='Markdown')
-            logger.warning("Отправлено текстовое поздравление (не удалось сгенерировать изображение)")
-            
-    except Exception as e:
-        logger.error(f"Ошибка при отправке поздравления: {e}")
-        logger.error(traceback.format_exc())
-        text = "🎉 *Поздравляем!*\n" + \
-               f"Вы пробежали {distance:.1f} км! Отличный результат! 🌟"
-        bot.reply_to(message, text, parse_mode='Markdown')
-
 class MessageHandler(BaseHandler):
     def register(self):
         """Регистрирует обработчики текстовых сообщений"""
@@ -424,52 +377,37 @@ class MessageHandler(BaseHandler):
                 month_stats = RunningLog.get_user_stats(user_id, current_year, current_month)
                 self.logger.debug(f"Month stats: {month_stats}")
                 
-                # Формируем прогресс-бар для годовой цели
-                if user.goal_km and user.goal_km > 0:
-                    progress = (total_km / user.goal_km * 100)
-                    progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
-                    remaining = user.goal_km - total_km
-                
                 # Формируем ответное сообщение
                 response = (
                     f"🎉 *Новая пробежка записана!*\n"
-                    f"╭────────────────────╮\n"
-                    f"│ 📍 {km:.1f} км\n"
-                    f"│ 📅 {datetime.now().strftime('%d.%m.%Y')}\n"
-                    f"╰────────────────────╯\n\n"
+                    f"📍 {km:.1f} км\n"
+                    f"📅 {datetime.now().strftime('%d.%m.%Y')}\n\n"
                     
-                    f"📊 *Статистика {calendar.month_name[datetime.now().month]}:*\n"
-                    f"╭────────────────────╮\n"
-                    f"│ 🏃 {month_stats['runs_count']} пробежек\n"
-                    f"│ 📏 {month_stats['total_km']:.1f} км всего\n"
-                    f"│ ⌀ {month_stats['avg_km']:.1f} км в среднем\n"
-                    f"╰────────────────────╯\n\n"
+                    f"📊 *Статистика {calendar.month_name[datetime.now().month]}*\n"
+                    f"🏃 {month_stats['runs_count']} пробежек\n"
+                    f"📏 {month_stats['total_km']:.1f} км всего\n"
+                    f"⌀ {month_stats['avg_km']:.1f} км в среднем\n\n"
                     
-                    f"📈 *Статистика {datetime.now().year}:*\n"
-                    f"╭────────────────────╮\n"
-                    f"│ 🏃 {year_stats['runs_count']} пробежек\n"
-                    f"│ 📏 {year_stats['total_km']:.1f} км всего\n"
-                    f"│ ⌀ {year_stats['avg_km']:.1f} км в среднем\n"
-                    f"╰────────────────────╯"
+                    f"📈 *Статистика {datetime.now().year}*\n"
+                    f"🏃 {year_stats['runs_count']} пробежек\n"
+                    f"📏 {year_stats['total_km']:.1f} км всего\n"
+                    f"⌀ {year_stats['avg_km']:.1f} км в среднем"
                 )
                 
                 # Добавляем информацию о годовой цели, если она установлена
                 if user.goal_km and user.goal_km > 0:
+                    progress = (total_km / user.goal_km * 100)
+                    progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
+                    remaining = user.goal_km - total_km
                     response += (
-                        f"\n\n🎯 *Годовая цель:*\n"
-                        f"╭────────────────────╮\n"
-                        f"│ 🎪 {user.goal_km:.0f} км\n"
-                        f"│ ▸ {progress_bar} {progress:.1f}%\n"
-                        f"│ 📍 Осталось: {remaining:.1f} км\n"
-                        f"╰────────────────────╯"
+                        f"\n\n🎯 *Годовая цель*\n"
+                        f"🎪 {user.goal_km:.0f} км\n"
+                        f"▸ {progress_bar} {progress:.1f}%\n"
+                        f"📍 Осталось: {remaining:.1f} км"
                     )
                 else:
                     response += (
-                        f"\n\n💡 *Совет:*\n"
-                        f"╭────────────────────╮\n"
-                        f"│ Установите годовую цель\n"
-                        f"│ командой /setgoal\n"
-                        f"╰────────────────────╯"
+                        f"\n\n💡 Установите годовую цель командой /setgoal"
                     )
                 
                 # Добавляем мотивационное сообщение
@@ -480,13 +418,30 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
-                self.bot.reply_to(message, response, parse_mode='Markdown')
+                # Для длинных дистанций генерируем изображение
+                if km >= 10:
+                    try:
+                        image_data = generate_achievement_image(km, username, datetime.now().strftime('%d.%m.%Y'))
+                        if image_data:
+                            photo = BytesIO(image_data)
+                            photo.name = 'achievement.png'
+                            self.bot.send_photo(
+                                message.chat.id,
+                                photo,
+                                caption=response,
+                                parse_mode='Markdown',
+                                reply_to_message_id=message.message_id
+                            )
+                        else:
+                            self.bot.reply_to(message, response, parse_mode='Markdown')
+                    except Exception as e:
+                        logger.error(f"Error generating image: {e}")
+                        self.bot.reply_to(message, response, parse_mode='Markdown')
+                else:
+                    self.bot.reply_to(message, response, parse_mode='Markdown')
+                
                 self.logger.info(f"Logged run: {km}km for user {user_id}")
                 
-                # Отправляем поздравительное сообщение с изображением для длинных дистанций
-                if km >= 10:
-                    send_achievement_message(message, km)
-                    
             else:
                 self.logger.error(f"Failed to save run for user {user_id}")
                 error_message = (
@@ -622,52 +577,37 @@ class MessageHandler(BaseHandler):
                 month_stats = RunningLog.get_user_stats(user_id, current_year, current_month)
                 self.logger.debug(f"Month stats: {month_stats}")
                 
-                # Формируем прогресс-бар для годовой цели
-                if user.goal_km and user.goal_km > 0:
-                    progress = (total_km / user.goal_km * 100)
-                    progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
-                    remaining = user.goal_km - total_km
-                
                 # Формируем ответное сообщение
                 response = (
                     f"🎉 *Пробежка с фото записана!*\n"
-                    f"╭────────────────────╮\n"
-                    f"│ 📍 {km:.1f} км\n"
-                    f"│ 📅 {datetime.now().strftime('%d.%m.%Y')}\n"
-                    f"╰────────────────────╯\n\n"
+                    f"📍 {km:.1f} км\n"
+                    f"📅 {datetime.now().strftime('%d.%m.%Y')}\n\n"
                     
-                    f"📊 *Статистика {calendar.month_name[datetime.now().month]}:*\n"
-                    f"╭────────────────────╮\n"
-                    f"│ 🏃 {month_stats['runs_count']} пробежек\n"
-                    f"│ 📏 {month_stats['total_km']:.1f} км всего\n"
-                    f"│ ⌀ {month_stats['avg_km']:.1f} км в среднем\n"
-                    f"╰────────────────────╯\n\n"
+                    f"📊 *Статистика {calendar.month_name[datetime.now().month]}*\n"
+                    f"🏃 {month_stats['runs_count']} пробежек\n"
+                    f"📏 {month_stats['total_km']:.1f} км всего\n"
+                    f"⌀ {month_stats['avg_km']:.1f} км в среднем\n\n"
                     
-                    f"📈 *Статистика {datetime.now().year}:*\n"
-                    f"╭────────────────────╮\n"
-                    f"│ 🏃 {year_stats['runs_count']} пробежек\n"
-                    f"│ 📏 {year_stats['total_km']:.1f} км всего\n"
-                    f"│ ⌀ {year_stats['avg_km']:.1f} км в среднем\n"
-                    f"╰────────────────────╯"
+                    f"📈 *Статистика {datetime.now().year}*\n"
+                    f"🏃 {year_stats['runs_count']} пробежек\n"
+                    f"📏 {year_stats['total_km']:.1f} км всего\n"
+                    f"⌀ {year_stats['avg_km']:.1f} км в среднем"
                 )
                 
                 # Добавляем информацию о годовой цели, если она установлена
                 if user.goal_km and user.goal_km > 0:
+                    progress = (total_km / user.goal_km * 100)
+                    progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
+                    remaining = user.goal_km - total_km
                     response += (
-                        f"\n\n🎯 *Годовая цель:*\n"
-                        f"╭────────────────────╮\n"
-                        f"│ 🎪 {user.goal_km:.0f} км\n"
-                        f"│ ▸ {progress_bar} {progress:.1f}%\n"
-                        f"│ 📍 Осталось: {remaining:.1f} км\n"
-                        f"╰────────────────────╯"
+                        f"\n\n🎯 *Годовая цель*\n"
+                        f"🎪 {user.goal_km:.0f} км\n"
+                        f"▸ {progress_bar} {progress:.1f}%\n"
+                        f"📍 Осталось: {remaining:.1f} км"
                     )
                 else:
                     response += (
-                        f"\n\n💡 *Совет:*\n"
-                        f"╭────────────────────╮\n"
-                        f"│ Установите годовую цель\n"
-                        f"│ командой /setgoal\n"
-                        f"╰────────────────────╯"
+                        f"\n\n💡 Установите годовую цель командой /setgoal"
                     )
                 
                 # Добавляем мотивационное сообщение
@@ -678,7 +618,28 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
-                self.bot.reply_to(message, response, parse_mode='Markdown')
+                # Для длинных дистанций генерируем изображение
+                if km >= 10:
+                    try:
+                        image_data = generate_achievement_image(km, username, datetime.now().strftime('%d.%m.%Y'))
+                        if image_data:
+                            photo = BytesIO(image_data)
+                            photo.name = 'achievement.png'
+                            self.bot.send_photo(
+                                message.chat.id,
+                                photo,
+                                caption=response,
+                                parse_mode='Markdown',
+                                reply_to_message_id=message.message_id
+                            )
+                        else:
+                            self.bot.reply_to(message, response, parse_mode='Markdown')
+                    except Exception as e:
+                        logger.error(f"Error generating image: {e}")
+                        self.bot.reply_to(message, response, parse_mode='Markdown')
+                else:
+                    self.bot.reply_to(message, response, parse_mode='Markdown')
+                
                 self.logger.info(f"Logged run with photo: {km}km for user {user_id}")
             else:
                 self.logger.error(f"Failed to save run with photo for user {user_id}")

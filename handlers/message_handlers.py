@@ -3,7 +3,6 @@ from database.models.user import User
 from database.models.running_log import RunningLog
 from datetime import datetime
 from handlers.base_handler import BaseHandler
-from main import send_achievement_message
 import traceback
 
 class MessageHandler(BaseHandler):
