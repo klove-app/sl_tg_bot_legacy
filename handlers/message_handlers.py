@@ -261,6 +261,53 @@ class MessageHandler(BaseHandler):
             
             self.logger.info(f"Username: {username}, Date: {date}")
             
+            # Получаем статистику за месяц и год
+            current_year = datetime.now().year
+            current_month = datetime.now().month
+            
+            year_stats = RunningLog.get_user_stats(str(message.from_user.id), current_year)
+            month_stats = RunningLog.get_user_stats(str(message.from_user.id), current_year, current_month)
+            
+            # Формируем сообщение со статистикой
+            response = (
+                f"🎉 Пробежка с фото записана!\n"
+                f"📍 {km:.1f} км\n"
+                f"📅 {date}\n\n"
+                
+                f"📊 Статистика {datetime.now().strftime('%B')}:\n"
+                f"🏃 {month_stats['runs_count']} пробежек\n"
+                f"📏 {month_stats['total_km']:.1f} км всего\n"
+                f"⌀ {month_stats['avg_km']:.1f} км в среднем\n\n"
+                
+                f"📈 Статистика {current_year}:\n"
+                f"🏃 {year_stats['runs_count']} пробежек\n"
+                f"📏 {year_stats['total_km']:.1f} км всего\n"
+                f"⌀ {year_stats['avg_km']:.1f} км в среднем"
+            )
+            
+            # Добавляем информацию о годовой цели
+            if user.goal_km and user.goal_km > 0:
+                total_km = RunningLog.get_user_total_km(user_id)
+                progress = (total_km / user.goal_km * 100)
+                progress_bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
+                remaining = user.goal_km - total_km
+                response += (
+                    f"\n\n🎯 Годовая цель:\n"
+                    f"🎪 {user.goal_km:.0f} км\n"
+                    f"▸ {progress_bar} {progress:.1f}%\n"
+                    f"📍 Осталось: {remaining:.1f} км"
+                )
+            else:
+                response += "\n\n💡 Установите годовую цель командой /goal"
+            
+            # Добавляем мотивационное сообщение
+            if km >= 10:
+                response += "\n\n🔥 Отличная длительная пробежка!"
+            elif km >= 5:
+                response += "\n\n💪 Хорошая тренировка!"
+            else:
+                response += "\n\n👍 Так держать!"
+            
             # Генерируем изображение
             image_data = generate_achievement_image(km, username, date)
             
