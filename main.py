@@ -295,3 +295,6 @@ if __name__ == "__main__":
     
     logger.info("Bot handlers registered")
     logger.info("Bot is running...")
+    
+    # Запускаем бота
+    bot.infinity_polling()
