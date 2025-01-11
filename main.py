@@ -210,20 +210,22 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
 def generate_achievement_image(distance, username, date):
     """Генерирует изображение достижения с помощью Stability AI"""
     try:
-        logger.info(f"Генерируем изображение для {username}, дистанция: {distance} км")
+        logger.info(f"Starting image generation for {username}, distance: {distance} km")
         
         # Генерируем промпт
         prompt = PromptGenerator.generate_prompt(distance)
-        logger.info(f"Сгенерирован промпт: {prompt}")
+        logger.info(f"Generated prompt: {prompt}")
         
         # Формируем запрос к API
         url = f"{cfg.STABILITY_API_HOST}/v1/generation/{cfg.STABLE_DIFFUSION_ENGINE_ID}/text-to-image"
+        logger.info(f"API URL: {url}")
         
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
             "Authorization": f"Bearer {cfg.STABILITY_API_KEY}"
         }
+        logger.info("Headers prepared")
         
         payload = {
             "text_prompts": [{"text": prompt}],
@@ -231,26 +233,32 @@ def generate_achievement_image(distance, username, date):
             "samples": 1,
             "steps": 30,
         }
+        logger.info("Payload prepared")
         
-        logger.info("Отправляем запрос к Stability AI")
+        logger.info("Sending request to Stability AI")
         response = requests.post(url, headers=headers, json=payload, timeout=30)
+        logger.info(f"Response status code: {response.status_code}")
         
         if response.status_code != 200:
-            logger.error(f"Ошибка при запросе к API: {response.status_code}")
-            logger.error(f"Ответ: {response.text}")
+            logger.error(f"API request failed with status code: {response.status_code}")
+            logger.error(f"Response text: {response.text}")
             return None
             
         data = response.json()
+        logger.info("Response JSON parsed")
         
         if "artifacts" not in data or len(data["artifacts"]) == 0:
-            logger.error("В ответе отсутствуют сгенерированные изображения")
+            logger.error("No artifacts in response")
+            logger.error(f"Full response: {data}")
             return None
             
         # Получаем base64 изображения
         image_data = data["artifacts"][0]["base64"]
+        logger.info("Got base64 image data")
         
         # Декодируем base64 в байты
         image_bytes = base64.b64decode(image_data)
+        logger.info("Decoded base64 to bytes")
         
         # Формируем тексты для водяных знаков
         info_text = f"{username} • {date}"  # Имя пользователя и дата
@@ -258,18 +266,18 @@ def generate_achievement_image(distance, username, date):
         distance_text = f"{distance:.1f} км"  # Дистанция
         distance_x = 0  # Позиция текста с дистанцией (будет вычислена в add_watermark)
         
-        # Добавляем водяной знак
-        logger.info("Добавляем водяной знак")
+        logger.info("Adding watermark")
         final_image = add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         
         if final_image is None:
-            logger.error("Не удалось добавить водяной знак")
+            logger.error("Failed to add watermark")
             return None
             
+        logger.info("Image generation completed successfully")
         return final_image
         
     except Exception as e:
-        logger.error(f"Ошибка при генерации изображения: {e}")
+        logger.error(f"Error in generate_achievement_image: {e}")
         logger.error(traceback.format_exc())
         return None
 
