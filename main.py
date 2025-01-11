@@ -21,7 +21,7 @@ from database.base import Base, engine, SessionLocal
 from database.logger import logger
 from database.models.user import User
 from database.models.running_log import RunningLog
-from config.config import STABILITY_API_HOST, STABILITY_API_KEY, STABLE_DIFFUSION_ENGINE_ID
+from config.config import TOKEN, ADMIN_IDS, DATABASE_NAME, DATABASE_URL, STABILITY_API_HOST, STABILITY_API_KEY, STABLE_DIFFUSION_ENGINE_ID
 
 # Импортируем обработчики
 from handlers.chat_handlers import register_chat_handlers
