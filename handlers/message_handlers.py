@@ -68,6 +68,7 @@ class MessageHandler(BaseHandler):
             
             # Добавляем запись о пробежке
             chat_id = str(message.chat.id) if message.chat.type != 'private' else None
+            self.logger.info("=== Before adding run entry ===")
             if RunningLog.add_entry(
                 user_id=str(message.from_user.id),
                 km=km,
@@ -75,6 +76,7 @@ class MessageHandler(BaseHandler):
                 notes=description if description else None,
                 chat_id=chat_id
             ):
+                self.logger.info("=== Run entry added successfully, preparing response ===")
                 # Получаем статистику пользователя
                 user = User.get_by_id(str(message.from_user.id))
                 total_km = RunningLog.get_user_total_km(str(message.from_user.id))
