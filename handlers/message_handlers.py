@@ -124,7 +124,9 @@ class MessageHandler(BaseHandler):
                     response += "\n\n👍 Так держать!"
                 
                 try:
-                    # Определяем username внутри блока try
+                    self.logger.info("Preparing to generate achievement image")
+                    
+                    # Определяем username
                     username = message.from_user.username
                     if not username:
                         username = message.from_user.first_name
@@ -136,7 +138,7 @@ class MessageHandler(BaseHandler):
                     date = datetime.now().strftime('%d.%m.%Y')
                     self.logger.info(f"Using date: {date}")
                     
-                    self.logger.info(f"Starting image generation with: km={km}, username={username}, date={date}")
+                    self.logger.info(f"Calling generate_achievement_image with: km={km}, username={username}, date={date}")
                     image_data = generate_achievement_image(km, username, date)
                     self.logger.info("Image generation completed")
                     
