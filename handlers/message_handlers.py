@@ -50,11 +50,8 @@ class MessageHandler(BaseHandler):
         self.logger.info(f"Processing message: {message.text}")
         self.logger.info(f"Chat type: {message.chat.type}, Chat ID: {message.chat.id}")
         
-        # Определяем username и date в начале функции
-        username = message.from_user.username or message.from_user.first_name
-        if not username:
-            username = "Anonymous"
-            self.logger.info("Username not available, using 'Anonymous'")
+        # Определяем username в начале функции
+        username = self._get_username(message)
         date = datetime.now().strftime('%d.%m.%Y')
         self.logger.info(f"Username determined: {username}")
         
@@ -153,6 +150,7 @@ class MessageHandler(BaseHandler):
                 self.logger.info(f"Distance: {km} km")
                 self.logger.info("Response message prepared, attempting image generation")
                 
+                # Генерируем изображение для любой дистанции
                 try:
                     self.logger.info("Preparing to generate achievement image")
                     self.logger.info(f"Calling generate_achievement_image with: km={km}, username={username}, date={date}")
@@ -200,6 +198,11 @@ class MessageHandler(BaseHandler):
         """Обработчик фотографий с подписью"""
         self.logger.info(f"Processing photo message with caption: {message.caption}")
         self.logger.info(f"Chat type: {message.chat.type}, Chat ID: {message.chat.id}")
+        
+        # Определяем username в начале функции
+        username = self._get_username(message)
+        date = datetime.now().strftime('%d.%m.%Y')
+        self.logger.info(f"Username determined: {username}")
         
         # Проверяем, что фото адресовано боту
         is_bot_mentioned = False
@@ -265,12 +268,6 @@ class MessageHandler(BaseHandler):
             # Добавляем запись о пробежке
             self.logger.info(f"Adding run entry: {km} km")
             
-            # Определяем username до генерации изображения
-            username = self._get_username(message)
-            date = datetime.now().strftime('%d.%m.%Y')
-            
-            self.logger.info(f"Username for image generation: {username}, Date: {date}")
-            
             # Получаем статистику за месяц и год
             current_year = datetime.now().year
             current_month = datetime.now().month
@@ -318,7 +315,7 @@ class MessageHandler(BaseHandler):
             else:
                 response += "\n\n👍 Так держать!"
             
-            # Генерируем изображение
+            # Генерируем изображение для любой дистанции
             try:
                 self.logger.info(f"Attempting to generate image with username: {username}")
                 image_data = generate_achievement_image(km, username, date)

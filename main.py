@@ -214,6 +214,10 @@ def generate_achievement_image(distance, username, date):
             logger.error("Username is None or empty")
             username = "Anonymous"
         
+        if not date:
+            logger.error("Date is None or empty")
+            date = datetime.now().strftime('%d.%m.%Y')
+            
         logger.info(f"Starting image generation with parameters:")
         logger.info(f"- distance: {distance}")
         logger.info(f"- username: {username}")
