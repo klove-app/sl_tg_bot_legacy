@@ -248,19 +248,25 @@ def generate_achievement_image(distance, username, date):
             logger.error(f"Response text: {response.text}")
             return None
             
+        # Проверяем наличие артефактов в ответе
         response_json = response.json()
         if 'artifacts' not in response_json or not response_json['artifacts']:
             logger.error("No artifacts in response")
             return None
             
+        # Декодируем изображение из base64
+        logger.info("Decoding image from base64")
         image_bytes = base64.b64decode(response_json['artifacts'][0]['base64'])
-        logger.info("Image decoded from base64")
+        logger.info("Image decoded successfully")
         
+        # Форматируем текст для водяного знака
         info_text = f"{username} • {date}"
         distance_text = f"{distance:.1f} км"
+        distance_x = 0  # Позиция для текста с дистанцией
         
-        logger.info("Adding watermark to image")
-        final_image = add_watermark(image_bytes, info_text, "Бег: свои люди", distance_text, 0)
+        # Добавляем водяной знак
+        logger.info("Adding watermark")
+        final_image = add_watermark(image_bytes, info_text, "Бег: свои люди", distance_text, distance_x)
         
         if final_image:
             logger.info("Watermark added successfully")
