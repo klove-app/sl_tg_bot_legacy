@@ -155,61 +155,41 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         logger.info(f"Используем шрифт: {font_path}")
         
         try:
-            font_large = ImageFont.truetype(font_path, 60)
-            font_medium = ImageFont.truetype(font_path, 40)
-            font_brand = ImageFont.truetype(font_path, 24)
-            font_info = ImageFont.truetype(font_path, 24)
+            font_large = ImageFont.truetype(font_path, 60)  # Для километража
+            font_medium = ImageFont.truetype(font_path, 30)  # Для имени и даты
+            font_brand = ImageFont.truetype(font_path, 40)   # Для названия бота
         except Exception as e:
             logger.error(f"Ошибка при загрузке шрифтов: {e}")
             return None
             
-        # Определяем цвет фона в зависимости от дистанции
-        if distance_x >= 42.2:  # Марафон
-            background_color = (139, 69, 19, 180)  # Коричневый
-        elif distance_x >= 21.1:  # Полумарафон
-            background_color = (205, 127, 50, 180)  # Бронзовый
-        elif distance_x >= 10:  # Длинная дистанция
-            background_color = (70, 130, 180, 180)  # Стальной синий
-        else:  # Обычная пробежка
-            background_color = (46, 139, 87, 180)  # Морской зеленый
-            
         # Размеры изображения
         width, height = image.size
         
-        # Отступы
-        left_margin = 40
-        bottom_margin = height - 40
-        
-        # Рисуем полупрозрачный прямоугольник для бренда
+        # Верхний водяной знак (название бота)
         brand_bbox = draw.textbbox((0, 0), brand_text, font=font_brand)
         brand_width = brand_bbox[2] - brand_bbox[0]
         brand_height = brand_bbox[3] - brand_bbox[1]
         
-        brand_background = Image.new('RGBA', (brand_width + 80, brand_height + 20), background_color)
-        image.paste(brand_background, (left_margin - 40, bottom_margin - brand_height - 60), brand_background)
+        # Полупрозрачный фон для верхнего водяного знака
+        top_background = Image.new('RGBA', (width, brand_height + 40), (0, 0, 0, 120))
+        image.paste(top_background, (0, 0), top_background)
         
-        # Рисуем полупрозрачный прямоугольник для дистанции
+        # Рисуем название бота по центру вверху
+        brand_x = (width - brand_width) // 2
+        draw.text((brand_x, 20), brand_text, font=font_brand, fill='white')
+        
+        # Нижний водяной знак (имя и километраж)
+        # Полупрозрачный фон для нижнего водяного знака
+        bottom_background = Image.new('RGBA', (width, 80), (0, 0, 0, 120))
+        image.paste(bottom_background, (0, height - 80), bottom_background)
+        
+        # Рисуем имя пользователя и дату слева внизу
+        draw.text((20, height - 60), info_text, font=font_medium, fill='white')
+        
+        # Рисуем километраж справа внизу
         distance_bbox = draw.textbbox((0, 0), distance_text, font=font_large)
         distance_width = distance_bbox[2] - distance_bbox[0]
-        distance_height = distance_bbox[3] - distance_bbox[1]
-        
-        distance_background = Image.new('RGBA', (distance_width + 80, distance_height + 20), background_color)
-        image.paste(distance_background, (distance_x - 40, bottom_margin - distance_height - 60), distance_background)
-        
-        # Рисуем тексты
-        draw.text((left_margin, bottom_margin - 80), brand_text, font=font_brand, fill='white')
-        draw.text((left_margin + draw.textlength(info_text, font=font_info) + 40, bottom_margin - 80), distance_text, font=font_large, fill='white')
-        draw.text((left_margin, bottom_margin - 40), info_text, font=font_info, fill='white')
-        
-        # Рисуем линию с градиентом прозрачности
-        line_start_x = int(left_margin + draw.textlength(info_text, font=font_info) + 40)
-        line_end_x = int(distance_x - 40)
-        line_y = bottom_margin - 30
-        
-        for x in range(line_start_x, line_end_x):
-            # Вычисляем прозрачность для текущей точки
-            alpha = int(255 * (1 - (x - line_start_x) / (line_end_x - line_start_x)))
-            draw.line([(x, line_y), (x + 1, line_y)], fill=(255, 255, 255, alpha), width=2)
+        draw.text((width - distance_width - 20, height - 70), distance_text, font=font_large, fill='white')
         
         # Сохраняем изображение
         output = BytesIO()
