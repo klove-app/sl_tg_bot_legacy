@@ -127,11 +127,17 @@ class MessageHandler(BaseHandler):
                 
                 # Генерируем изображение для любой дистанции
                 username = message.from_user.username
+                self.logger.info(f"Username from message.from_user.username: {username}")
+                
                 if not username:
                     username = message.from_user.first_name
+                    self.logger.info(f"Username from message.from_user.first_name: {username}")
+                
                 date = datetime.now().strftime('%d.%m.%Y')
+                self.logger.info(f"Final username: {username}, date: {date}")
                 
                 try:
+                    self.logger.info(f"Attempting to generate image with: km={km}, username={username}, date={date}")
                     image_data = generate_achievement_image(km, username, date)
                     if image_data:
                         photo = BytesIO(image_data)
@@ -298,11 +304,17 @@ class MessageHandler(BaseHandler):
                 
                 # Генерируем изображение для любой дистанции
                 username = message.from_user.username
+                self.logger.info(f"Username from message.from_user.username: {username}")
+                
                 if not username:
                     username = message.from_user.first_name
+                    self.logger.info(f"Username from message.from_user.first_name: {username}")
+                
                 date = datetime.now().strftime('%d.%m.%Y')
+                self.logger.info(f"Final username: {username}, date: {date}")
                 
                 try:
+                    self.logger.info(f"Attempting to generate image with: km={km}, username={username}, date={date}")
                     image_data = generate_achievement_image(km, username, date)
                     if image_data:
                         photo = BytesIO(image_data)
