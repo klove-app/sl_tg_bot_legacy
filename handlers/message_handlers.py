@@ -3,6 +3,7 @@ from database.models.user import User
 from database.models.running_log import RunningLog
 from datetime import datetime
 from handlers.base_handler import BaseHandler
+from main import generate_achievement_image
 import traceback
 
 class MessageHandler(BaseHandler):
@@ -293,20 +294,13 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
-                # Для фото пользователя добавляем водяные знаки
+                # Определяем username и date для генерации изображения
                 username = message.from_user.username or message.from_user.first_name
                 date = datetime.now().strftime('%d.%m.%Y')
-                info_text = f"{username} • {date}"
-                distance_text = f"{km:.1f} km"
-                distance_x = 650
                 
+                # Генерируем изображение
                 try:
-                    # Получаем фото максимального размера
-                    file_info = self.bot.get_file(message.photo[-1].file_id)
-                    downloaded_file = self.bot.download_file(file_info.file_path)
-                    
-                    # Добавляем водяные знаки
-                    image_data = add_watermark(downloaded_file, info_text, "", distance_text, distance_x)
+                    image_data = generate_achievement_image(km, username, date)
                     if image_data:
                         photo = BytesIO(image_data)
                         photo.name = 'achievement.png'
@@ -320,37 +314,25 @@ class MessageHandler(BaseHandler):
                     else:
                         self.bot.reply_to(message, response, parse_mode='Markdown')
                 except Exception as e:
-                    self.logger.error(f"Ошибка при обработке фото: {e}")
+                    self.logger.error(f"Ошибка при генерации изображения: {e}")
                     self.logger.error(traceback.format_exc())
                     self.bot.reply_to(message, response, parse_mode='Markdown')
                 
-                self.logger.info(f"Logged run with photo: {km}km for user {user_id}")
+                self.logger.info(f"Logged run: {km}km for user {message.from_user.id}")
             else:
-                self.logger.error(f"Failed to save run with photo for user {user_id}")
-                error_message = (
-                    "⚠️ *Не удалось сохранить пробежку*\n\n"
-                    "Пожалуйста, попробуйте еще раз или обратитесь к администратору"
-                )
-                self.bot.reply_to(message, error_message, parse_mode='Markdown')
-            return
+                self.bot.reply_to(message, "❌ Не удалось сохранить пробежку")
                 
-        except ValueError:
-            self.logger.warning(f"Invalid caption format: {message.caption}")
-            self.bot.reply_to(
-                message,
-                "⚠️ *Некорректный формат числа*\n\n"
-                "Используйте точку или запятую\n"
-                "Пример: `5.2` или `5,2`",
-                parse_mode='Markdown'
-            )
-        except Exception as e:
-            self.logger.error(f"Error in handle_photo_run: {e}")
-            self.logger.error(f"Full traceback: {traceback.format_exc()}")
-            error_message = (
-                "😔 *Произошла ошибка*\n\n"
-                "Пожалуйста, попробуйте позже или обратитесь к администратору"
-            )
-            self.bot.reply_to(message, error_message, parse_mode='Markdown')
+        except ValueError as e:
+            self.logger.error(f"Error parsing message: {e}")
+            if message.chat.type == 'private':
+                self.bot.reply_to(
+                    message,
+                    "⚠️ *Некорректный формат*\n\n"
+                    "Отправьте сообщение в формате:\n"
+                    "• `5.2` - просто километраж\n"
+                    "• `5.2 Утренняя пробежка` - с описанием",
+                    parse_mode='Markdown'
+                )
 
 def register_handlers(bot):
     """Регистрирует обработчики сообщений"""
