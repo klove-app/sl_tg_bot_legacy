@@ -126,7 +126,9 @@ class MessageHandler(BaseHandler):
                     response += "\n\n👍 Так держать!"
                 
                 # Генерируем изображение для любой дистанции
-                username = message.from_user.username or message.from_user.first_name
+                username = message.from_user.username
+                if not username:
+                    username = message.from_user.first_name
                 date = datetime.now().strftime('%d.%m.%Y')
                 
                 try:
@@ -294,11 +296,12 @@ class MessageHandler(BaseHandler):
                 else:
                     response += "\n\n👍 Так держать!"
                 
-                # Определяем username и date для генерации изображения
-                username = message.from_user.username or message.from_user.first_name
+                # Генерируем изображение для любой дистанции
+                username = message.from_user.username
+                if not username:
+                    username = message.from_user.first_name
                 date = datetime.now().strftime('%d.%m.%Y')
                 
-                # Генерируем изображение
                 try:
                     image_data = generate_achievement_image(km, username, date)
                     if image_data:
