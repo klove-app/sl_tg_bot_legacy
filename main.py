@@ -28,8 +28,8 @@ TOKEN = cfg.TOKEN
 ADMIN_IDS = cfg.ADMIN_IDS
 DATABASE_NAME = cfg.DATABASE_NAME
 DATABASE_URL = cfg.DATABASE_URL
-STABLE_DIFFUSION_API_URL = cfg.STABLE_DIFFUSION_API_URL
-STABLE_DIFFUSION_API_KEY = cfg.STABLE_DIFFUSION_API_KEY
+STABILITY_API_HOST = cfg.STABILITY_API_HOST
+STABILITY_API_KEY = cfg.STABILITY_API_KEY
 STABLE_DIFFUSION_ENGINE_ID = cfg.STABLE_DIFFUSION_ENGINE_ID
 
 # Импортируем обработчики
@@ -230,12 +230,12 @@ def generate_achievement_image(distance, username, date):
         logger.info(f"Сгенерирован промпт: {prompt}")
         
         # Формируем запрос к API
-        url = STABLE_DIFFUSION_API_URL
+        url = f"{cfg.STABILITY_API_HOST}/v1/generation/{cfg.STABLE_DIFFUSION_ENGINE_ID}/text-to-image"
         
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "Authorization": f"Bearer {STABLE_DIFFUSION_API_KEY}"
+            "Authorization": f"Bearer {cfg.STABILITY_API_KEY}"
         }
         
         payload = {
