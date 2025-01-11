@@ -107,13 +107,13 @@ class PromptGenerator:
         
         # Добавляем специальные элементы в зависимости от дистанции
         if distance >= 42.2:  # Марафон
-            prompt += ", epic achievement, victory pose, golden aura"
+            prompt += ", epic achievement, victory pose, golden aura, triumphant atmosphere"
         elif distance >= 21.1:  # Полумарафон
-            prompt += ", triumphant pose, silver aura"
+            prompt += ", great achievement, triumphant pose, silver aura, proud atmosphere"
         elif distance >= 10:  # Длинная дистанция
-            prompt += ", proud pose, glowing energy"
-        else:  # Обычная пробежка
-            prompt += ", happy mood, positive energy"
+            prompt += ", achievement, proud pose, glowing energy, determined mood"
+        else:  # Любая другая дистанция
+            prompt += ", joyful achievement, happy mood, positive energy, inspiring atmosphere"
             
         return prompt
 
@@ -210,6 +210,8 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
 def generate_achievement_image(distance, username, date):
     """Генерирует изображение достижения с помощью Stability AI"""
     try:
+        logger.info(f"Генерируем изображение для {username}, дистанция: {distance} км")
+        
         # Генерируем промпт
         prompt = PromptGenerator.generate_prompt(distance)
         logger.info(f"Сгенерирован промпт: {prompt}")
