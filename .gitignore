@@ -63,3 +63,7 @@ bot.db
 
 *.egg 
 
+# Config files
+config/config
+config/config.py
+
