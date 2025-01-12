@@ -102,6 +102,19 @@ class PromptGenerator:
             
         return prompt
 
+def get_background_color(distance):
+    """Возвращает цвет фона в зависимости от дистанции (по аналогии с поясами в киокушин карате)"""
+    if distance >= 42.2:  # Марафон - черный пояс
+        return (0, 0, 0, 120)
+    elif distance >= 30:  # Коричневый пояс
+        return (70, 40, 20, 120)
+    elif distance >= 20:  # Зеленый пояс
+        return (0, 100, 0, 120)
+    elif distance >= 10:  # Синий пояс
+        return (0, 0, 139, 120)
+    else:  # Начальный уровень - светло-синий
+        return (30, 144, 255, 120)
+
 def generate_achievement_image(distance, username, date):
     """Генерирует изображение достижения с помощью Stability AI"""
     try:
@@ -233,9 +246,12 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         brand_width = brand_bbox[2] - brand_bbox[0]
         brand_height = brand_bbox[3] - brand_bbox[1]
         
+        # Получаем цвет фона в зависимости от дистанции
+        background_color = get_background_color(distance_x)
+        
         # Полупрозрачный фон только под текстом
         padding = 20  # Отступ вокруг текста
-        top_background = Image.new('RGBA', (brand_width + padding * 2, brand_height + padding * 2), (0, 0, 0, 120))
+        top_background = Image.new('RGBA', (brand_width + padding * 2, brand_height + padding * 2), background_color)
         
         # Размещаем в правом верхнем углу с отступом
         top_x = width - brand_width - padding * 3  # Дополнительный отступ справа
@@ -247,7 +263,7 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         
         # Нижний водяной знак (имя и километраж)
         # Полупрозрачный фон для нижнего водяного знака
-        bottom_background = Image.new('RGBA', (width, 80), (0, 0, 0, 120))
+        bottom_background = Image.new('RGBA', (width, 80), background_color)
         image.paste(bottom_background, (0, height - 80), bottom_background)
         
         # Рисуем имя пользователя и дату слева внизу
