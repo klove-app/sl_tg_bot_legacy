@@ -165,6 +165,7 @@ class MessageHandler(BaseHandler):
             
             try:
                 self.logger.info("Before calling generate_achievement_image")
+                self.logger.info(f"API settings: host={cfg.STABILITY_API_HOST}, key={'present' if cfg.STABILITY_API_KEY else 'missing'}")
                 image_data = generate_achievement_image(km, username, date)
                 self.logger.info(f"After calling generate_achievement_image, got data: {'yes' if image_data else 'no'}")
                 
@@ -184,11 +185,12 @@ class MessageHandler(BaseHandler):
                     self.logger.error("Image data is None")
                     self.bot.reply_to(message, response, parse_mode='Markdown')
             except Exception as e:
-                self.logger.error(f"Error in image generation/sending: {e}")
+                self.logger.error(f"Error in image generation/sending: {str(e)}")
+                self.logger.error("Full error:")
                 self.logger.error(traceback.format_exc())
                 self.bot.reply_to(message, response, parse_mode='Markdown')
             
-            # Сохраняем запись о пробежке
+            # Сохраняем запись о пробежке после отправки сообщения
             self.logger.info("=== Saving run entry ===")
             chat_id = str(message.chat.id) if message.chat.type != 'private' else None
             if RunningLog.add_entry(
@@ -250,12 +252,13 @@ class MessageHandler(BaseHandler):
         try:
             # Извлекаем первое число из подписи, поддерживая целые и дробные числа
             first_word = message.caption.split()[0]
-            # Пробуем сначала преобразовать как есть (для целых чисел)
+            # Сначала заменяем запятую на точку (для дробных)
+            first_word = first_word.replace(',', '.')
+            # Затем пробуем преобразовать в число
             try:
                 km = float(first_word)
             except ValueError:
-                # Если не получилось, пробуем заменить запятую на точку (для дробных)
-                km = float(first_word.replace(',', '.'))
+                raise ValueError("Не удалось преобразовать строку в число")
             
             self.logger.info(f"Extracted distance from caption: {km} km")
             
@@ -339,6 +342,7 @@ class MessageHandler(BaseHandler):
             
             try:
                 self.logger.info("Before calling generate_achievement_image")
+                self.logger.info(f"API settings: host={cfg.STABILITY_API_HOST}, key={'present' if cfg.STABILITY_API_KEY else 'missing'}")
                 image_data = generate_achievement_image(km, username, date)
                 self.logger.info(f"After calling generate_achievement_image, got data: {'yes' if image_data else 'no'}")
                 
@@ -359,7 +363,8 @@ class MessageHandler(BaseHandler):
                     self.logger.error("Image data is None")
                     self.bot.reply_to(message, response, parse_mode='Markdown')
             except Exception as e:
-                self.logger.error(f"Error in image generation/sending: {e}")
+                self.logger.error(f"Error in image generation/sending: {str(e)}")
+                self.logger.error("Full error:")
                 self.logger.error(traceback.format_exc())
                 self.bot.reply_to(message, response, parse_mode='Markdown')
             
