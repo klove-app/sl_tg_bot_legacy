@@ -256,7 +256,8 @@ class StatsHandler(BaseHandler):
                 if year_stats.get('chat_stats'):
                     response += f"📊 <b>Статистика по чатам</b>\n"
                     for chat_type, stats in year_stats['chat_stats'].items():
-                        response += f"<b>{chat_type.capitalize()}</b>\n"
+                        chat_type_display = chat_type.capitalize() if chat_type else "Неизвестно"
+                        response += f"<b>{chat_type_display}</b>\n"
                         response += f"├ Пробежек: {stats['runs_count']}\n"
                         response += f"├ Дистанция: {stats['total_km']:.2f} км\n"
                         response += f"└ Средняя: {stats['avg_km']:.2f} км\n\n"
