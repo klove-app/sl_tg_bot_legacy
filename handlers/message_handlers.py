@@ -7,6 +7,7 @@ from main import generate_achievement_image, add_watermark
 from io import BytesIO
 import traceback
 import re
+from config import config as cfg
 
 class MessageHandler(BaseHandler):
     def _get_username(self, message):
