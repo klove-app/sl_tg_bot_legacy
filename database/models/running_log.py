@@ -377,12 +377,6 @@ class RunningLog(Base):
                 extract('year', cls.date_added) == year
             )
             
-            if chat_id:
-                base_query = base_query.filter(cls.chat_id == chat_id)
-            
-            if chat_type:
-                base_query = base_query.filter(cls.chat_type == chat_type)
-            
             if month:
                 base_query = base_query.filter(extract('month', cls.date_added) == month)
             
@@ -413,15 +407,7 @@ class RunningLog(Base):
                     func.sum(cls.km).label('monthly_km')
                 ).filter(
                     extract('year', cls.date_added) == year
-                )
-                
-                if chat_id:
-                    monthly_query = monthly_query.filter(cls.chat_id == chat_id)
-                    
-                if chat_type:
-                    monthly_query = monthly_query.filter(cls.chat_type == chat_type)
-                
-                monthly_query = monthly_query.group_by(
+                ).group_by(
                     extract('month', cls.date_added)
                 ).order_by(
                     extract('month', cls.date_added)
@@ -468,15 +454,7 @@ class RunningLog(Base):
                 func.max(cls.km).label('best_run')
             ).filter(
                 extract('year', cls.date_added) == year
-            )
-            
-            if chat_id:
-                query = query.filter(cls.chat_id == chat_id)
-                
-            if chat_type:
-                query = query.filter(cls.chat_type == chat_type)
-            
-            results = query.group_by(
+            ).group_by(
                 cls.user_id
             ).order_by(
                 func.sum(cls.km).desc()
@@ -488,7 +466,7 @@ class RunningLog(Base):
                 'runs_count': r.runs_count,
                 'avg_km': float(r.avg_km or 0),
                 'best_run': float(r.best_run or 0)
-            } for r in results]
+            } for r in query]
         except Exception as e:
             logger.error(f"Error getting chat top users: {e}")
             logger.error(f"Full traceback: {traceback.format_exc()}")
