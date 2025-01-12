@@ -72,7 +72,7 @@ def register_chat_handlers(bot):
                 f"📊 Общая статистика чата:\n"
                 f"├ Участников: {total_users}\n"
                 f"├ Всего пробежек: {total_runs}\n"
-                f"└ Общая дистанция: {total_distance:.1f} км\n\n"
+                f"└ Общая дистанция: {total_distance:.2f} км\n\n"
                 f"🏆 Рейтинг участников:\n"
             )
             
@@ -87,10 +87,10 @@ def register_chat_handlers(bot):
                 medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
                 response += (
                     f"\n{medal} {username}\n"
-                    f"├ Дистанция: {total_km:.1f} км ({percentage:.1f}%)\n"
+                    f"├ Дистанция: {total_km:.2f} км ({percentage:.2f}%)\n"
                     f"├ Пробежек: {runs_count} ({(runs_count/total_runs*100):.1f}%)\n"
-                    f"├ Средняя: {avg_km:.1f} км\n"
-                    f"└ Лучшая: {best_run:.1f} км\n"
+                    f"├ Средняя: {avg_km:.2f} км\n"
+                    f"└ Лучшая: {best_run:.2f} км\n"
                 )
                 
             bot.reply_to(message, response)

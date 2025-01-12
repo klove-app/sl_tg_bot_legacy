@@ -190,11 +190,11 @@ class AdminHandler(BaseHandler):
             "<b>🌟 ОБЩАЯ СТАТИСТИКА</b>\n"
             "<pre>┌────────────────────────────────────┐\n"
             f"│ 🏃 Пробежек:     {total_stats['runs_count']:5d}           │\n"
-            f"│ 📏 Всего:     {total_km:7.1f}км           │\n"
+            f"│ 📏 Всего:     {total_km:7.2f}км           │\n"
             f"│ 👥 Бегунов:      {total_stats['users_count']:5d}           │\n"
         )
         if total_stats['runs_count'] > 0:
-            report += f"│ ⚡️ Средняя:    {avg_km:7.1f}км           │\n"
+            report += f"│ ⚡️ Средняя:    {avg_km:7.2f}км           │\n"
         report += "└────────────────────────────────────┘</pre>\n\n"
         
         # 2. Статистика по месяцам
@@ -213,7 +213,7 @@ class AdminHandler(BaseHandler):
 
         for m, km, runs in month_data:
             bar = progress_bar(km, max_km, 10)
-            report += f"│ {m:02d}.{year}  {runs:4d}  {km:6.1f}км  {bar}   │\n"
+            report += f"│ {m:02d}.{year}  {runs:4d}  {km:6.2f}км  {bar}   │\n"
             if m < len(month_data):
                 report += "├────────────────────────────────────┤\n"
         report += "└────────────────────────────────────┘</pre>\n\n"
@@ -235,7 +235,7 @@ class AdminHandler(BaseHandler):
                 bar = progress_bar(runner_km, total_km, 10)
                 
                 medal = medals[i-1] if i <= 3 else " "
-                report += f"│{medal}{i:2d}.  {username[:8]:<8} {runner_km:5.1f}км  {bar}   │\n"
+                report += f"│{medal}{i:2d}.  {username[:8]:<8} {runner_km:5.2f}км  {bar}   │\n"
                 if i < len(top_runners):
                     report += "├────────────────────────────────────┤\n"
             report += "└────────────────────────────────────┘</pre>\n\n"
@@ -279,9 +279,9 @@ class AdminHandler(BaseHandler):
                 bar = progress_bar(chat_km, max_chat_km, 10)
                 
                 if chat_km == 0:
-                    report += f"│ {chat_id_short:<6} {chat['runs_count']:4d}  {chat_km:6.1f}км             │\n"
+                    report += f"│ {chat_id_short:<6} {chat['runs_count']:4d}  {chat_km:6.2f}км             │\n"
                 else:
-                    report += f"│ {chat_id_short:<6} {chat['runs_count']:4d}  {chat_km:6.1f}км  {bar}   │\n"
+                    report += f"│ {chat_id_short:<6} {chat['runs_count']:4d}  {chat_km:6.2f}км  {bar}   │\n"
                 if chat != chat_stats[-1]:
                     report += "├────────────────────────────────────┤\n"
             report += "└────────────────────────────────────┘</pre>\n"

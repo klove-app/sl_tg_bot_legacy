@@ -51,8 +51,8 @@ class GoalHandler(BaseHandler):
             total_km = RunningLog.get_user_total_km(user_id)
             progress = (total_km / goal_km * 100)
 
-            response = f"🎯 Установлена цель на год: {goal_km:.1f} км\n"
-            response += f"📊 Текущий прогресс: {total_km:.1f} км ({progress:.1f}%)"
+            response = f"🎯 Установлена цель на год: {goal_km:.2f} км\n"
+            response += f"📊 Текущий прогресс: {total_km:.2f} км ({progress:.2f}%)"
 
             self.logger.info(f"Sending response: {response}")
             self.bot.reply_to(message, response)

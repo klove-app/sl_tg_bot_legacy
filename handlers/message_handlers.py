@@ -125,18 +125,18 @@ class MessageHandler(BaseHandler):
             # Формируем сообщение со статистикой
             response = (
                 f"🎉 Новая пробежка записана!\n"
-                f"📍 {km:.1f} км\n"
+                f"📍 {km:.2f} км\n"
                 f"📅 {datetime.now().strftime('%d.%m.%Y')}\n\n"
                 
                 f"📊 Статистика {datetime.now().strftime('%B')}:\n"
                 f"🏃 {month_stats['runs_count']} пробежек\n"
-                f"📏 {month_stats['total_km']:.1f} км всего\n"
-                f"⌀ {month_stats['avg_km']:.1f} км в среднем\n\n"
+                f"📏 {month_stats['total_km']:.2f} км всего\n"
+                f"⌀ {month_stats['avg_km']:.2f} км в среднем\n\n"
                 
                 f"📈 Статистика {current_year}:\n"
                 f"🏃 {year_stats['runs_count']} пробежек\n"
-                f"📏 {year_stats['total_km']:.1f} км всего\n"
-                f"⌀ {year_stats['avg_km']:.1f} км в среднем"
+                f"📏 {year_stats['total_km']:.2f} км всего\n"
+                f"⌀ {year_stats['avg_km']:.2f} км в среднем"
             )
             
             # Добавляем информацию о годовой цели
@@ -148,7 +148,7 @@ class MessageHandler(BaseHandler):
                     f"\n\n🎯 Годовая цель:\n"
                     f"🎪 {user.goal_km:.0f} км\n"
                     f"▸ {progress_bar} {progress:.1f}%\n"
-                    f"📍 Осталось: {remaining:.1f} км"
+                    f"📍 Осталось: {remaining:.2f} км"
                 )
             
             # Добавляем мотивационное сообщение
@@ -299,18 +299,18 @@ class MessageHandler(BaseHandler):
             # Формируем сообщение со статистикой
             response = (
                 f"🎉 Пробежка с фото записана!\n"
-                f"📍 {km:.1f} км\n"
+                f"📍 {km:.2f} км\n"
                 f"📅 {date}\n\n"
                 
                 f"📊 Статистика {datetime.now().strftime('%B')}:\n"
                 f"🏃 {month_stats['runs_count']} пробежек\n"
-                f"📏 {month_stats['total_km']:.1f} км всего\n"
-                f"⌀ {month_stats['avg_km']:.1f} км в среднем\n\n"
+                f"📏 {month_stats['total_km']:.2f} км всего\n"
+                f"⌀ {month_stats['avg_km']:.2f} км в среднем\n\n"
                 
                 f"📈 Статистика {current_year}:\n"
                 f"🏃 {year_stats['runs_count']} пробежек\n"
-                f"📏 {year_stats['total_km']:.1f} км всего\n"
-                f"⌀ {year_stats['avg_km']:.1f} км в среднем"
+                f"📏 {year_stats['total_km']:.2f} км всего\n"
+                f"⌀ {year_stats['avg_km']:.2f} км в среднем"
             )
             
             # Добавляем информацию о годовой цели
@@ -323,7 +323,7 @@ class MessageHandler(BaseHandler):
                     f"\n\n🎯 Годовая цель:\n"
                     f"🎪 {user.goal_km:.0f} км\n"
                     f"▸ {progress_bar} {progress:.1f}%\n"
-                    f"📍 Осталось: {remaining:.1f} км"
+                    f"📍 Осталось: {remaining:.2f} км"
                 )
             else:
                 response += "\n\n💡 Установите годовую цель командой /goal"
@@ -352,7 +352,7 @@ class MessageHandler(BaseHandler):
                     downloaded_file,
                     f"{username} • {date}",  # Информация о пробежке
                     "Бег: свои люди",        # Название чата
-                    f"{km:.1f} км",          # Километраж
+                    f"{km:.2f} км",          # Километраж
                     km                       # Для позиционирования
                 )
                 self.logger.info("Watermark added successfully")

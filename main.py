@@ -180,7 +180,7 @@ def generate_achievement_image(distance, username, date):
             image_data,
             f"{username} • {date}",  # Информация о пробежке
             "Бег: свои люди",        # Название чата
-            f"{distance:.1f} км",    # Километраж
+            f"{distance:.2f} км",    # Километраж
             distance                 # Для позиционирования
         )
         logger.info("Watermark added")
@@ -203,13 +203,19 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         
         # Пытаемся загрузить шрифты
         font_paths = [
-            # Windows
+            # Windows fonts
             "C:\\Windows\\Fonts\\arialbd.ttf",  # Arial Bold
             "C:\\Windows\\Fonts\\arial.ttf",    # Arial Regular
             "C:\\Windows\\Fonts\\calibrib.ttf", # Calibri Bold
             "C:\\Windows\\Fonts\\calibri.ttf",  # Calibri Regular
             "C:\\Windows\\Fonts\\segoeui.ttf",  # Segoe UI
             "C:\\Windows\\Fonts\\consola.ttf",  # Consolas Regular
+            # macOS fonts
+            "/System/Library/Fonts/SFNS.ttf",           # San Francisco
+            "/System/Library/Fonts/Helvetica.ttc",      # Helvetica
+            "/System/Library/Fonts/HelveticaNeue.ttc",  # Helvetica Neue
+            "/Library/Fonts/Arial.ttf",                 # Arial
+            "/Library/Fonts/Arial Bold.ttf",            # Arial Bold
         ]
         
         found_fonts = []

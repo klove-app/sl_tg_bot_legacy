@@ -88,9 +88,6 @@ class RunningLog(Base):
                 extract('year', cls.date_added) == current_year
             )
             
-            if chat_type:
-                query = query.filter(cls.chat_type == chat_type)
-            
             logger.debug(f"Executing query: {query}")
             result = query.scalar()
             logger.info(f"Total km for user {user_id}: {result or 0.0}")
@@ -288,35 +285,10 @@ class RunningLog(Base):
             logger.debug(f"Executing query: {query}")
             result = query.first()
             
-            # Формируем статистику по типам чатов
-            chat_stats_query = db.query(
-                cls.chat_type,
-                func.count().label('runs_count'),
-                func.sum(cls.km).label('total_km'),
-                func.avg(cls.km).label('avg_km')
-            ).filter(
-                cls.user_id == user_id,
-                extract('year', cls.date_added) == year
-            )
-            
-            if month:
-                chat_stats_query = chat_stats_query.filter(extract('month', cls.date_added) == month)
-            
-            chat_stats_query = chat_stats_query.group_by(cls.chat_type)
-            logger.debug(f"Executing chat stats query: {chat_stats_query}")
-            chat_stats = chat_stats_query.all()
-            
             stats = {
                 'runs_count': result.runs_count or 0,
                 'total_km': float(result.total_km or 0),
-                'avg_km': float(result.avg_km or 0),
-                'chat_stats': {
-                    stat.chat_type: {
-                        'runs_count': stat.runs_count,
-                        'total_km': float(stat.total_km or 0),
-                        'avg_km': float(stat.avg_km or 0)
-                    } for stat in chat_stats
-                }
+                'avg_km': float(result.avg_km or 0)
             }
             
             logger.info(f"Stats for user {user_id}: {stats}")
@@ -328,8 +300,7 @@ class RunningLog(Base):
             return {
                 'runs_count': 0,
                 'total_km': 0.0,
-                'avg_km': 0.0,
-                'chat_stats': {}
+                'avg_km': 0.0
             }
         finally:
             if should_close:

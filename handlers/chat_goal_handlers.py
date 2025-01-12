@@ -238,7 +238,7 @@ class ChatGoalHandler(BaseHandler):
             if last_year_stats['total_km'] > 0:
                 response += (
                     f"📊 В {last_year} году чат пробежал:\n"
-                    f"├ Всего: {last_year_stats['total_km']:.1f} км\n"
+                    f"├ Всего: {last_year_stats['total_km']:.2f} км\n"
                     f"├ Пробежек: {last_year_stats['runs_count']}\n"
                     f"└ Участников: {last_year_stats['users_count']}\n\n"
                 )
