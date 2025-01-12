@@ -336,16 +336,26 @@ class MessageHandler(BaseHandler):
             else:
                 response += "\n\n👍 Так держать!"
             
-            # Генерируем изображение для любой дистанции
-            self.logger.info("=== Starting image generation ===")
+            # Добавляем водяные знаки на фото пользователя
+            self.logger.info("=== Adding watermark to user's photo ===")
             self.logger.info(f"Parameters: km={km}, username={username}, date={date}")
-            self.logger.info("Attempting to generate image...")
             
             try:
-                self.logger.info("Before calling generate_achievement_image")
-                self.logger.info(f"API settings: host={cfg.STABILITY_API_HOST}, key={'present' if cfg.STABILITY_API_KEY else 'missing'}")
-                image_data = generate_achievement_image(km, username, date)
-                self.logger.info(f"After calling generate_achievement_image, got data: {'yes' if image_data else 'no'}")
+                # Получаем фото в максимальном размере
+                file_info = self.bot.get_file(message.photo[-1].file_id)
+                downloaded_file = self.bot.download_file(file_info.file_path)
+                
+                self.logger.info("Photo downloaded successfully")
+                
+                # Добавляем водяные знаки
+                image_data = add_watermark(
+                    downloaded_file,
+                    f"{username} • {date}",  # Информация о пробежке
+                    "Бег: свои люди",        # Название чата
+                    f"{km:.1f} км",          # Километраж
+                    km                       # Для позиционирования
+                )
+                self.logger.info("Watermark added successfully")
                 
                 if image_data:
                     self.logger.info("Image data received, creating BytesIO")
@@ -364,7 +374,7 @@ class MessageHandler(BaseHandler):
                     self.logger.error("Image data is None")
                     self.bot.reply_to(message, response, parse_mode='Markdown')
             except Exception as e:
-                self.logger.error(f"Error in image generation/sending: {str(e)}")
+                self.logger.error(f"Error in image processing/sending: {str(e)}")
                 self.logger.error("Full error:")
                 self.logger.error(traceback.format_exc())
                 self.bot.reply_to(message, response, parse_mode='Markdown')
