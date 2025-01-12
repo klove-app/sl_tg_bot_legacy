@@ -296,8 +296,7 @@ class RunningLog(Base):
                 func.avg(cls.km).label('avg_km')
             ).filter(
                 cls.user_id == user_id,
-                extract('year', cls.date_added) == year,
-                cls.chat_type.isnot(None)
+                extract('year', cls.date_added) == year
             )
             
             if month:
