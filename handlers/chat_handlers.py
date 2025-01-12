@@ -16,13 +16,7 @@ def register_chat_handlers(bot):
     def show_top(message):
         """Показывает топ бегунов в чате"""
         logger.info(f"Processing /top command. Message: {message.text}")
-        logger.info(f"Chat type: {message.chat.type}, Chat ID: {message.chat.id}")
         try:
-            if message.chat.type == 'private':
-                logger.debug("Command /top rejected - private chat")
-                bot.reply_to(message, "❌ Эта команда доступна только в групповых чатах")
-                return
-
             year = datetime.now().year
             
             logger.debug(f"Processing /top for year {year}")
@@ -64,18 +58,10 @@ def register_chat_handlers(bot):
                 func.sum(RunningLog.km).desc()
             ).limit(10).all()
 
-            # Вычисляем максимальные значения для прогресс-баров
-            max_km = max([float(r.total_km) for r in results]) if results else 0
-            max_runs = max([r.runs_count for r in results]) if results else 0
-            max_avg = max([float(r.avg_km) for r in results]) if results else 0
-
             response = (
-                f"🏃‍♂️ <b>Статистика бегунов за {year} год</b>\n\n"
-                f"📊 <b>Общие показатели:</b>\n"
-                f"├ Участников: {total_users}\n"
-                f"├ Всего пробежек: {total_runs}\n"
-                f"└ Общая дистанция: {total_distance:.2f} км\n\n"
-                f"🏆 <b>Рейтинг участников:</b>\n"
+                f"📊 Статистика бегунов {year}\n"
+                f"👥 {total_users} участников • 🏃‍♂️ {total_runs} пробежек • 📏 {total_distance:.2f} км\n\n"
+                f"🏆 Рейтинг:\n"
             )
             
             for i, result in enumerate(results, 1):
@@ -85,28 +71,13 @@ def register_chat_handlers(bot):
                 avg_km = float(result.avg_km)
                 best_run = float(result.best_run)
                 
-                # Вычисляем проценты и прогресс-бары
-                km_percent = (total_km / max_km * 100)
-                runs_percent = (runs_count / max_runs * 100)
-                avg_percent = (avg_km / max_avg * 100)
-                
-                km_bar = "▰" * int(km_percent/10) + "▱" * (10 - int(km_percent/10))
-                runs_bar = "▰" * int(runs_percent/10) + "▱" * (10 - int(runs_percent/10))
-                avg_bar = "▰" * int(avg_percent/10) + "▱" * (10 - int(avg_percent/10))
-                
-                # Определяем медаль и формируем заголовок
+                # Определяем медаль и процент от общей дистанции
                 medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
                 total_percent = (total_km / total_distance * 100)
                 
                 response += (
-                    f"\n{medal} <b>{username}</b> ({total_percent:.1f}% от общей дистанции)\n"
-                    f"├ Дистанция: {total_km:.2f} км\n"
-                    f"├ {km_bar} {km_percent:.1f}%\n"
-                    f"├ Пробежки: {runs_count}\n"
-                    f"├ {runs_bar} {runs_percent:.1f}%\n"
-                    f"├ Средняя: {avg_km:.2f} км\n"
-                    f"├ {avg_bar} {avg_percent:.1f}%\n"
-                    f"└ Лучшая: {best_run:.2f} км\n"
+                    f"\n{medal} @{username} • {total_km:.2f} км ({total_percent:.1f}%)\n"
+                    f"   {runs_count} пробежек • ⌀{avg_km:.2f} км • 🔥{best_run:.2f} км\n"
                 )
 
             bot.reply_to(message, response, parse_mode='HTML')
