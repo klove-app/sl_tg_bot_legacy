@@ -1,4 +1,4 @@
-TOKEN = '6828027394:AAHHrIvwkxmf1GX_Bi9WEoBqndKb-wn8Fg8'
+﻿TOKEN = '6329273445:AAEsQKLCr2BjNvjjFZhdWs224AoAN7UXqno'
 ADMIN_IDS = ['1431390352']
 
 # Настройки базы данных
