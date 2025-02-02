@@ -200,8 +200,8 @@ class StatsHandler(BaseHandler):
                 self.logger.debug("Using existing database session")
             
             try:
-                # Получаем или создаем пользователя
-                user = db.query(User).filter(User.user_id == user_id).first()
+                # Получаем пользователя
+                user = User.get_by_id(user_id, db=db)
                 self.logger.debug(f"Found user in database: {user is not None}")
                 
                 if not user:

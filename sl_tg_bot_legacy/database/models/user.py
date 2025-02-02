@@ -17,10 +17,19 @@ class User(Base):
     runs = relationship("RunningLog", back_populates="user")
 
     @classmethod
-    def get_by_id(cls, user_id: str) -> 'User':
+    def get_by_id(cls, user_id: str, db = None) -> 'User':
         """Получить пользователя по ID"""
-        db = next(get_db())
-        return db.query(cls).filter(cls.user_id == user_id).first()
+        if db is None:
+            db = next(get_db())
+            should_close = True
+        else:
+            should_close = False
+            
+        try:
+            return db.query(cls).filter(cls.user_id == user_id).first()
+        finally:
+            if should_close:
+                db.close()
 
     @classmethod
     def create(cls, user_id: str, username: str, chat_type: str = 'group') -> 'User':
