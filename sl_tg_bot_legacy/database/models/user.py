@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, Boolean, REAL, Text
 from sqlalchemy.orm import Session, relationship
 from database.base import Base, get_db
 from database.logger import logger
+import traceback
 
 class User(Base):
     __tablename__ = "users"
@@ -33,18 +34,34 @@ class User(Base):
             
         try:
             # Пробуем найти пользователя
-            query = db.query(cls).filter(cls.user_id == str(user_id))
-            logger.debug(f"get_by_id: Executing query: {str(query.statement.compile(compile_kwargs={'literal_binds': True}))}")
+            logger.debug(f"get_by_id: Creating query for user_id: {user_id}")
+            query = db.query(cls)
+            logger.debug(f"get_by_id: Base query: {str(query)}")
+            
+            # Добавляем фильтр
+            query = query.filter(cls.user_id == str(user_id))
+            logger.debug(f"get_by_id: Query with filter: {str(query)}")
+            
+            # Компилируем запрос для логов
+            compiled_query = query.statement.compile(compile_kwargs={'literal_binds': True})
+            logger.debug(f"get_by_id: Compiled SQL: {str(compiled_query)}")
+            
+            # Выполняем запрос
+            logger.debug("get_by_id: Executing query...")
             user = query.first()
             logger.info(f"get_by_id: Found user: {user is not None}")
             
-            # Если пользователь не найден, создаем нового
-            if not user:
-                logger.info(f"get_by_id: User not found, will be created in create method")
-                return None
+            if user:
+                logger.debug(f"get_by_id: User details - username: {user.username}, chat_type: {user.chat_type}, user_id: {user.user_id}, type of user_id: {type(user.user_id)}")
+                logger.debug(f"get_by_id: Full user object: {user.__dict__}")
+            else:
+                logger.debug("get_by_id: User not found in database")
             
-            logger.debug(f"get_by_id: User details - username: {user.username}, chat_type: {user.chat_type}, user_id: {user.user_id}, type of user_id: {type(user.user_id)}")
             return user
+        except Exception as e:
+            logger.error(f"get_by_id: Error during query execution: {str(e)}")
+            logger.error(f"get_by_id: Full traceback: {traceback.format_exc()}")
+            raise
         finally:
             if should_close:
                 logger.debug("get_by_id: Closing database session")
