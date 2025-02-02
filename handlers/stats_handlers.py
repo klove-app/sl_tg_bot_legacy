@@ -200,17 +200,17 @@ class StatsHandler(BaseHandler):
                 self.logger.debug("Using existing database session")
             
             try:
-                # Получаем или создаем пользователя
-                user = db.query(User).filter(User.user_id == user_id).first()
+                # Получаем пользователя через метод с улучшенным логированием
+                user = User.get_by_id(user_id, db=db)
                 self.logger.debug(f"Found user in database: {user is not None}")
                 
                 if not user:
                     username = message.from_user.username or message.from_user.first_name
                     chat_type = message.chat.type if message.chat else 'private'
                     self.logger.info(f"Creating new user: {username}, chat_type: {chat_type}")
-                    user = User(user_id=user_id, username=username, chat_type=chat_type)
-                    db.add(user)
-                    db.commit()
+                    user = User.create(user_id, username, chat_type, db=db)
+                    if not user:
+                        raise Exception("Failed to create user")
                 
                 current_year = datetime.now().year
                 current_month = datetime.now().month
@@ -250,47 +250,34 @@ class StatsHandler(BaseHandler):
                 if month_stats['runs_count'] > 0:
                     response += f"└ Средняя: {month_stats['avg_km']:.2f} км\n\n"
                 else:
-                    response += f"└ Средняя: 0.0 км\n\n"
-                
-                # Статистика по типам чатов
-                if year_stats.get('chat_stats'):
-                    response += f"📊 <b>Статистика по чатам</b>\n"
-                    for chat_type, stats in year_stats['chat_stats'].items():
-                        chat_type_display = chat_type.capitalize() if chat_type else "Неизвестно"
-                        response += f"<b>{chat_type_display}</b>\n"
-                        response += f"├ Пробежек: {stats['runs_count']}\n"
-                        response += f"├ Дистанция: {stats['total_km']:.2f} км\n"
-                        response += f"└ Средняя: {stats['avg_km']:.2f} км\n\n"
+                    response += "└ Нет пробежек\n\n"
                 
                 # Лучшие результаты
-                response += f"🏆 <b>Лучшие результаты</b>\n"
+                response += "🏆 <b>Лучшие результаты</b>\n"
                 response += f"├ Пробежка: {best_stats['best_run']:.2f} км\n"
-                response += f"└ Всего: {best_stats['total_runs']} пробежек\n"
-                
-                self.logger.debug(f"Generated response: {response}")
+                response += f"├ Всего пробежек: {best_stats['total_runs']}\n"
+                response += f"└ Общая дистанция: {best_stats['total_km']:.2f} км"
                 
                 # Создаем клавиатуру
-                markup = InlineKeyboardMarkup()
-                
-                # Основные действия
-                markup.row(
-                    InlineKeyboardButton("📝 Подробная статистика", callback_data="show_detailed_stats"),
+                keyboard = InlineKeyboardMarkup()
+                keyboard.row(
+                    InlineKeyboardButton("📊 Подробная статистика", callback_data="show_detailed_stats"),
                     InlineKeyboardButton("✏️ Редактировать пробежки", callback_data="edit_runs")
                 )
+                keyboard.row(
+                    InlineKeyboardButton("🎯 Установить цель", callback_data="set_goal_1000"),
+                    InlineKeyboardButton("🏃‍♂️ Новая пробежка", callback_data="new_run")
+                )
                 
-                # Кнопка установки цели
-                if user.goal_km == 0:
-                    markup.row(InlineKeyboardButton("🎯 Установить цель", callback_data="set_goal_0"))
-                else:
-                    markup.row(InlineKeyboardButton("🎯 Изменить цель", callback_data="set_goal_0"))
+                self.logger.info(f"Sending profile response to user {user_id}")
+                self.bot.reply_to(message, response, parse_mode='HTML', reply_markup=keyboard)
                 
-                # Отправляем сообщение с клавиатурой
-                self.logger.info("Sending profile message")
-                self.bot.reply_to(message, response, reply_markup=markup, parse_mode='HTML')
-                self.logger.info("Profile message sent successfully")
-                
+            except Exception as e:
+                self.logger.error(f"Error in handle_profile: {e}")
+                self.logger.error(f"Full traceback: {traceback.format_exc()}")
+                self.bot.reply_to(message, "❌ Произошла ошибка при получении профиля")
             finally:
-                if db is not None:
+                if db:
                     self.logger.debug("Closing database session")
                     db.close()
                     
