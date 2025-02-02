@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, func, extract, text
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, func, extract, text, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database.base import Base, get_db, Session, SessionLocal
@@ -10,15 +10,21 @@ class RunningLog(Base):
     __tablename__ = "running_log"
 
     log_id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.user_id"))
+    user_id = Column(String, ForeignKey("users.user_id"), index=True)
     km = Column(Float)
-    date_added = Column(Date)
+    date_added = Column(Date, index=True)
     notes = Column(String, nullable=True)
-    chat_id = Column(String, nullable=True)
-    chat_type = Column(String, nullable=True)
+    chat_id = Column(String, nullable=True, index=True)
+    chat_type = Column(String, nullable=True, index=True)
 
     # Отношение к пользователю
     user = relationship("User", back_populates="runs")
+
+    # Создаем составные индексы для оптимизации запросов
+    __table_args__ = (
+        Index('idx_user_date', 'user_id', 'date_added'),
+        Index('idx_chat_date', 'chat_id', 'date_added'),
+    )
 
     @classmethod
     def add_entry(cls, user_id: str, km: float, date_added: datetime.date, notes: str = None, chat_id: str = None, chat_type: str = None, db = None) -> bool:
