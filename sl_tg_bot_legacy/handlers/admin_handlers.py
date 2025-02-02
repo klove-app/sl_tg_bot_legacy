@@ -4,9 +4,12 @@ from database.models.running_log import RunningLog
 from handlers.base_handler import BaseHandler
 from datetime import datetime, date
 from config.config import ADMIN_IDS
-from database.db import get_connection
+from database.base import get_db
 from database.models.user import User
 from database.models.challenge import Challenge
+from sqlalchemy import func, extract
+from database.logger import logger
+import traceback
 
 class AdminHandler(BaseHandler):
     def register(self):
@@ -46,17 +49,16 @@ class AdminHandler(BaseHandler):
             start_date = date(2025, 1, 7)
             end_date = date(2025, 1, 8)
             
-            # Сначала получаем список записей
-            conn = get_connection()
-            cursor = conn.cursor()
+            db = next(get_db())
             try:
-                cursor.execute(
-                    """SELECT user_id, km, date_added 
-                       FROM running_log 
-                       WHERE date_added BETWEEN ? AND ?""",
-                    (start_date.isoformat(), end_date.isoformat())
-                )
-                records = cursor.fetchall()
+                # Сначала получаем список записей
+                records = db.query(
+                    RunningLog.user_id,
+                    RunningLog.km,
+                    RunningLog.date_added
+                ).filter(
+                    RunningLog.date_added.between(start_date, end_date)
+                ).all()
                 
                 if not records:
                     self.bot.reply_to(message, "❌ Записей за 7-8 января 2025 не найдено")
@@ -64,24 +66,32 @@ class AdminHandler(BaseHandler):
                 
                 # Формируем сообщение с найденными записями
                 preview = "Найдены следующие записи для удаления:\n\n"
-                for user_id, km, date_added in records:
-                    preview += f"👤 Пользователь: {user_id}\n"
-                    preview += f"🏃‍♂️ Дистанция: {km} км\n"
-                    preview += f"📅 Дата: {date_added}\n\n"
+                for record in records:
+                    preview += f"👤 Пользователь: {record.user_id}\n"
+                    preview += f"🏃‍♂️ Дистанция: {record.km} км\n"
+                    preview += f"📅 Дата: {record.date_added}\n\n"
                 
                 # Отправляем предварительный просмотр
                 self.bot.reply_to(message, preview)
                 
                 # Удаляем записи
-                deleted_count = RunningLog.delete_entries_by_date_range(start_date, end_date)
+                deleted = db.query(RunningLog).filter(
+                    RunningLog.date_added.between(start_date, end_date)
+                ).delete()
+                
+                db.commit()
                 
                 self.bot.reply_to(
                     message,
-                    f"✅ Удалено {deleted_count} тестовых записей за период 7-8 января 2025"
+                    f"✅ Удалено {deleted} тестовых записей за период 7-8 января 2025"
                 )
+            except Exception as e:
+                logger.error(f"Error deleting test data: {e}")
+                logger.error(f"Full traceback: {traceback.format_exc()}")
+                db.rollback()
+                raise
             finally:
-                cursor.close()
-                conn.close()
+                db.close()
             
         except Exception as e:
             self.logger.error(f"Error in handle_delete_test_data: {e}")
@@ -248,43 +258,16 @@ class AdminHandler(BaseHandler):
             report += "│ Название   Цель     Прогресс       │\n"
             report += "├────────────────────────────────────┤\n"
             
-            for challenge in challenges:
-                total_km = float(challenge.get_total_progress() or 0)
-                goal_km = float(challenge.goal_km or 0)
-                progress = (total_km / goal_km * 100) if goal_km > 0 else 0
-                bar = progress_bar(total_km, goal_km, 10)
+            for i, challenge in enumerate(challenges, 1):
+                total_km = challenge.get_total_progress()
+                percent = (total_km / challenge.goal_km * 100) if challenge.goal_km > 0 else 0
+                bar = progress_bar(total_km, challenge.goal_km, 10)
                 
-                title = challenge.title[:10] if challenge.title else "Без имени"
-                if goal_km == 0:
-                    report += f"│ {title:<10} {goal_km:4.0f}км                      │\n"
-                else:
-                    report += f"│ {title:<10} {goal_km:4.0f}км  {bar} {progress:3.0f}%   │\n"
-                if challenge != challenges[-1]:
+                title = challenge.title[:10]
+                report += f"│ {title:<10} {challenge.goal_km:5.0f}км  {bar}   │\n"
+                if i < len(challenges):
                     report += "├────────────────────────────────────┤\n"
             report += "└────────────────────────────────────┘</pre>\n\n"
-        
-        # 5. Статистика по чатам
-        chat_stats = RunningLog.get_chat_stats_all(year)
-        if chat_stats:
-            report += "<b>💬 СТАТИСТИКА ПО ЧАТАМ</b>\n<pre>"
-            report += "┌────────────────────────────────────┐\n"
-            report += "│  Чат    Проб.  Дист.    Прогресс  │\n"
-            report += "├────────────────────────────────────┤\n"
-            
-            max_chat_km = max(float(chat['total_km']) for chat in chat_stats)
-            for chat in chat_stats:
-                chat_id_short = str(chat['chat_id'])[-6:]
-                chat_km = float(chat['total_km'])
-                percent = (chat_km / max_chat_km * 100)
-                bar = progress_bar(chat_km, max_chat_km, 10)
-                
-                if chat_km == 0:
-                    report += f"│ {chat_id_short:<6} {chat['runs_count']:4d}  {chat_km:6.2f}км             │\n"
-                else:
-                    report += f"│ {chat_id_short:<6} {chat['runs_count']:4d}  {chat_km:6.2f}км  {bar}   │\n"
-                if chat != chat_stats[-1]:
-                    report += "├────────────────────────────────────┤\n"
-            report += "└────────────────────────────────────┘</pre>\n"
         
         return report
 
