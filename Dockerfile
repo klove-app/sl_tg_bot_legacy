@@ -5,6 +5,10 @@ RUN apt-get update && apt-get install -y \
     zlib1g-dev \
     libjpeg-dev \
     libpng-dev \
+    postgresql \
+    postgresql-contrib \
+    libpq-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 # Создаем и активируем виртуальное окружение
