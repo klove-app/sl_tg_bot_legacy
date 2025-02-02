@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Float, Boolean, REAL
 from sqlalchemy.orm import Session, relationship
 from database.base import Base, get_db
+from database.logger import logger
 
 class User(Base):
     __tablename__ = "users"
@@ -19,16 +20,27 @@ class User(Base):
     @classmethod
     def get_by_id(cls, user_id: str, db = None) -> 'User':
         """Получить пользователя по ID"""
+        logger.info(f"get_by_id: Looking for user with ID {user_id}")
+        
         if db is None:
+            logger.debug("get_by_id: Creating new database session")
             db = next(get_db())
             should_close = True
         else:
+            logger.debug("get_by_id: Using existing database session")
             should_close = False
             
         try:
-            return db.query(cls).filter(cls.user_id == user_id).first()
+            query = db.query(cls).filter(cls.user_id == user_id)
+            logger.debug(f"get_by_id: Executing query: {query}")
+            user = query.first()
+            logger.info(f"get_by_id: Found user: {user is not None}")
+            if user:
+                logger.debug(f"get_by_id: User details - username: {user.username}, chat_type: {user.chat_type}")
+            return user
         finally:
             if should_close:
+                logger.debug("get_by_id: Closing database session")
                 db.close()
 
     @classmethod

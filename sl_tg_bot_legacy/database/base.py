@@ -7,13 +7,16 @@ from config.config import DATABASE_URL
 
 # Создаем URL для подключения к базе данных
 SQLALCHEMY_DATABASE_URL = DATABASE_URL
-logger.info(f"Database URL: {SQLALCHEMY_DATABASE_URL}")
+logger.info(f"Connecting to PostgreSQL database")
 
 # Создаем движок базы данных
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL
+    SQLALCHEMY_DATABASE_URL,
+    pool_size=5,
+    max_overflow=10,
+    echo=True  # Включаем логирование SQL
 )
-logger.info("Database engine created")
+logger.info("PostgreSQL database engine created with connection pool")
 
 # Создаем фабрику сессий
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -39,7 +42,7 @@ logger.info("Global session created")
 
 def init_db():
     """Инициализация базы данных"""
-    logger.info("Initializing database")
+    logger.info("Initializing PostgreSQL database")
     try:
         # Создаем все таблицы
         Base.metadata.create_all(bind=engine)
