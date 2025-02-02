@@ -1,38 +1,49 @@
-from database.db import get_connection
+from sqlalchemy import Column, Integer, String, Float, Date, Boolean, ForeignKey, func, extract, text
+from sqlalchemy.orm import relationship
 from datetime import datetime
+from database.base import Base, get_db, Session, SessionLocal
+from database.logger import logger
 from utils.formatters import round_km
 import traceback
-import logging
 
-logger = logging.getLogger(__name__)
+class Challenge(Base):
+    __tablename__ = "challenges"
 
-class Challenge:
-    def __init__(self, challenge_id=None, title=None, goal_km=None, start_date=None, end_date=None, chat_id=None, is_system=False, user_id=None):
-        self.challenge_id = challenge_id
-        self.title = title
-        self.goal_km = goal_km
-        self.start_date = start_date
-        self.end_date = end_date
-        self.chat_id = chat_id
-        self.is_system = is_system
-        self.user_id = user_id
+    challenge_id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    goal_km = Column(Float)
+    start_date = Column(Date)
+    end_date = Column(Date)
+    chat_id = Column(String, nullable=True)
+    is_system = Column(Boolean, default=False)
+    user_id = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+    created_by = Column(String, nullable=True)
 
-    @staticmethod
-    def create_personal_challenge(title, goal_km, start_date, end_date, description, created_by):
+    @classmethod
+    def create_personal_challenge(cls, title, goal_km, start_date, end_date, description, created_by):
         """Создает персональный челлендж"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            INSERT INTO challenges (title, goal_km, start_date, end_date, description, created_by)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (title, round_km(goal_km), start_date, end_date, description, created_by))
-        
-        challenge_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        
-        return Challenge(challenge_id, title, description, start_date, end_date, goal_km, created_by)
+        db = next(get_db())
+        try:
+            challenge = cls(
+                title=title,
+                goal_km=round_km(goal_km),
+                start_date=start_date,
+                end_date=end_date,
+                description=description,
+                created_by=created_by
+            )
+            db.add(challenge)
+            db.commit()
+            db.refresh(challenge)
+            return challenge
+        except Exception as e:
+            logger.error(f"Error creating personal challenge: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            db.rollback()
+            return None
+        finally:
+            db.close()
 
     def add_participant(self, user_id):
         """Добавляет участника в системный челлендж"""
@@ -40,466 +51,320 @@ class Challenge:
         # так как учитываются все пользователи чата автоматически
         pass
 
-    @staticmethod
-    def get_active_challenges() -> list:
+    @classmethod
+    def get_active_challenges(cls) -> list:
         """Получает список активных челленджей"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
+        db = next(get_db())
         try:
-            current_date = datetime.now().date().isoformat()
+            current_date = datetime.now().date()
             
-            query = """
-                SELECT *
-                FROM challenges
-                WHERE start_date <= ?
-                AND end_date >= ?
-                ORDER BY start_date DESC
-            """
-            
-            cursor.execute(query, (current_date, current_date))
-            rows = cursor.fetchall()
-            
-            challenges = []
-            for row in rows:
-                challenge = Challenge(
-                    title=row[1],
-                    goal_km=row[2],
-                    start_date=row[3],
-                    end_date=row[4],
-                    chat_id=row[5],
-                    is_system=bool(row[6])
-                )
-                challenge.challenge_id = row[0]
-                challenges.append(challenge)
+            challenges = db.query(cls).filter(
+                cls.start_date <= current_date,
+                cls.end_date >= current_date
+            ).order_by(
+                cls.start_date.desc()
+            ).all()
             
             return challenges
-            
+        except Exception as e:
+            logger.error(f"Error getting active challenges: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return []
         finally:
-            cursor.close()
-            conn.close()
+            db.close()
 
-    @staticmethod
-    def get_system_challenge(chat_id, year):
+    @classmethod
+    def get_system_challenge(cls, chat_id, year):
         """Получает системный челлендж для чата на указанный год"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
+        db = next(get_db())
         try:
             # Нормализуем chat_id
             normalized_chat_id = chat_id.replace('-100', '')
             
-            print(f"Looking for challenge: chat_id={normalized_chat_id}, year={year}")
+            logger.info(f"Looking for challenge: chat_id={normalized_chat_id}, year={year}")
             
-            cursor.execute("""
-                SELECT challenge_id, title, goal_km, start_date, end_date, chat_id, is_system
-                FROM challenges 
-                WHERE chat_id = ? 
-                AND strftime('%Y', start_date) = ? 
-                AND is_system = 1
-            """, (normalized_chat_id, str(year)))
+            challenge = db.query(cls).filter(
+                cls.chat_id == normalized_chat_id,
+                extract('year', cls.start_date) == year,
+                cls.is_system == True
+            ).first()
             
-            row = cursor.fetchone()
-            if row:
-                print(f"Found challenge: {row}")
-                return Challenge(
-                    challenge_id=row[0],
-                    title=row[1],
-                    goal_km=row[2],
-                    start_date=row[3],
-                    end_date=row[4],
-                    chat_id=row[5],
-                    is_system=bool(row[6])
-                )
+            if challenge:
+                logger.info(f"Found challenge: {challenge.__dict__}")
+            return challenge
+        except Exception as e:
+            logger.error(f"Error getting system challenge: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             return None
-            
         finally:
-            conn.close()
+            db.close()
 
-    @staticmethod
-    def create(title, goal_km, start_date, end_date, chat_id, is_system=False):
+    @classmethod
+    def create(cls, title, goal_km, start_date, end_date, chat_id, is_system=False):
         """Создает новый челлендж"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
+        db = next(get_db())
         try:
-            cursor.execute("""
-                INSERT INTO challenges (title, goal_km, start_date, end_date, chat_id, is_system)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (title, goal_km, start_date, end_date, chat_id, 1 if is_system else 0))
-            
-            conn.commit()
-            return cursor.lastrowid
-            
+            challenge = cls(
+                title=title,
+                goal_km=goal_km,
+                start_date=start_date,
+                end_date=end_date,
+                chat_id=chat_id,
+                is_system=is_system
+            )
+            db.add(challenge)
+            db.commit()
+            db.refresh(challenge)
+            return challenge
+        except Exception as e:
+            logger.error(f"Error creating challenge: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            db.rollback()
+            return None
         finally:
-            conn.close()
+            db.close()
 
     def update_goal(self, new_goal_km):
         """Обновляет цель челленджа"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
+        db = next(get_db())
         try:
-            cursor.execute("""
-                UPDATE challenges
-                SET goal_km = ?
-                WHERE challenge_id = ?
-                """, (new_goal_km, self.challenge_id))
-            
-            conn.commit()
             self.goal_km = new_goal_km
-            
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return True
+        except Exception as e:
+            logger.error(f"Error updating challenge goal: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            db.rollback()
+            return False
         finally:
-            conn.close()
+            db.close()
 
-    @staticmethod
-    def get_by_id(challenge_id):
+    @classmethod
+    def get_by_id(cls, challenge_id):
         """Получает челлендж по ID"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
+        db = next(get_db())
         try:
-            cursor.execute("""
-                SELECT challenge_id, title, goal_km, start_date, end_date, chat_id, is_system
-                FROM challenges
-                WHERE challenge_id = ?
-                """, (challenge_id,))
-            
-            row = cursor.fetchone()
-            if row:
-                return Challenge(
-                    challenge_id=row[0],
-                    title=row[1],
-                    goal_km=row[2],
-                    start_date=row[3],
-                    end_date=row[4],
-                    chat_id=row[5],
-                    is_system=bool(row[6])
-                )
+            return db.query(cls).filter(cls.challenge_id == challenge_id).first()
+        except Exception as e:
+            logger.error(f"Error getting challenge by id: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             return None
-            
         finally:
-            conn.close()
+            db.close()
 
     def get_participants_count(self) -> int:
         """Получает количество участников челленджа"""
-        conn = get_connection()
-        cursor = conn.cursor()
+        from database.models.running_log import RunningLog
         
+        db = next(get_db())
         try:
             # Нормализуем chat_id если он есть
             normalized_chat_id = str(int(float(self.chat_id))).replace('-100', '') if self.chat_id is not None else None
             
             if self.is_system and normalized_chat_id:
                 # Для системного челленджа считаем всех участников чата
-                cursor.execute("""
-                    SELECT COUNT(DISTINCT user_id)
-                    FROM running_log
-                    WHERE chat_id = ?
-                    AND date_added BETWEEN ? AND ?
-                """, (normalized_chat_id, self.start_date, self.end_date))
+                count = db.query(func.count(func.distinct(RunningLog.user_id))).filter(
+                    RunningLog.chat_id == normalized_chat_id,
+                    RunningLog.date_added >= self.start_date,
+                    RunningLog.date_added <= self.end_date
+                ).scalar()
             else:
                 # Для обычного челленджа считаем только добавленных участников
-                cursor.execute("""
-                    SELECT COUNT(*)
-                    FROM challenge_participants
-                    WHERE challenge_id = ?
-                """, (self.challenge_id,))
+                count = db.query(func.count()).filter(
+                    cls.challenge_id == self.challenge_id
+                ).scalar()
             
-            result = cursor.fetchone()
-            return int(result[0]) if result[0] is not None else 0
-            
+            return count or 0
+        except Exception as e:
+            logger.error(f"Error getting participants count: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return 0
         finally:
-            cursor.close()
-            conn.close()
+            db.close()
 
     def get_total_progress(self) -> float:
         """Получает общий прогресс по челленджу"""
-        conn = get_connection()
-        cursor = conn.cursor()
+        from database.models.running_log import RunningLog
         
+        db = next(get_db())
         try:
             # Нормализуем chat_id если он есть
             normalized_chat_id = str(int(float(self.chat_id))).replace('-100', '') if self.chat_id is not None else None
             
             if self.is_system and normalized_chat_id:
                 # Для системного челленджа учитываем все пробежки в чате
-                cursor.execute("""
-                    SELECT COALESCE(SUM(km), 0)
-                    FROM running_log
-                    WHERE chat_id = ?
-                    AND date_added BETWEEN ? AND ?
-                """, (normalized_chat_id, self.start_date, self.end_date))
+                total_km = db.query(func.sum(RunningLog.km)).filter(
+                    RunningLog.chat_id == normalized_chat_id,
+                    RunningLog.date_added >= self.start_date,
+                    RunningLog.date_added <= self.end_date
+                ).scalar()
             else:
                 # Для обычного челленджа учитываем только пробежки участников
-                cursor.execute("""
-                    SELECT COALESCE(SUM(r.km), 0)
-                    FROM running_log r
-                    JOIN challenge_participants cp ON r.user_id = cp.user_id
-                    WHERE cp.challenge_id = ?
-                    AND r.date_added BETWEEN ? AND ?
-                """, (self.challenge_id, self.start_date, self.end_date))
+                total_km = db.query(func.sum(RunningLog.km)).join(
+                    cls, RunningLog.user_id == cls.user_id
+                ).filter(
+                    cls.challenge_id == self.challenge_id,
+                    RunningLog.date_added >= self.start_date,
+                    RunningLog.date_added <= self.end_date
+                ).scalar()
             
-            result = cursor.fetchone()
-            return float(result[0]) if result[0] is not None else 0.0
-            
+            return float(total_km or 0.0)
+        except Exception as e:
+            logger.error(f"Error getting total progress: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return 0.0
         finally:
-            cursor.close()
-            conn.close()
+            db.close()
 
-    @staticmethod
-    def get_chat_participants(chat_id):
-        """Получает список всех участников чата, которые когда-либо регистрировали пробежки"""
-        conn = get_connection()
-        cursor = conn.cursor()
+    @classmethod
+    def get_chat_participants(cls, chat_id):
+        """Получает список участников чата"""
+        from database.models.running_log import RunningLog
         
+        db = next(get_db())
         try:
-            cursor.execute("""
-                SELECT DISTINCT u.user_id, u.username
-                FROM users u
-                JOIN running_log r ON u.user_id = r.user_id
-                WHERE r.chat_id = ?
-            """, (chat_id,))
-            
-            return cursor.fetchall()
-            
-        finally:
-            conn.close() 
-
-    def save(self):
-        """Сохраняет или обновляет челлендж в базе данных"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        try:
-            if self.challenge_id:
-                # Обновляем существующий челлендж
-                cursor.execute("""
-                    UPDATE challenges
-                    SET title = ?, goal_km = ?, start_date = ?, end_date = ?, chat_id = ?, is_system = ?
-                    WHERE challenge_id = ?
-                """, (
-                    self.title,
-                    self.goal_km,
-                    self.start_date,
-                    self.end_date,
-                    self.chat_id,
-                    1 if self.is_system else 0,
-                    self.challenge_id
-                ))
-            else:
-                # Создаем новый челлендж
-                cursor.execute("""
-                    INSERT INTO challenges (title, goal_km, start_date, end_date, chat_id, is_system)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    self.title,
-                    self.goal_km,
-                    self.start_date,
-                    self.end_date,
-                    self.chat_id,
-                    1 if self.is_system else 0
-                ))
-                self.challenge_id = cursor.lastrowid
-            
-            conn.commit()
-            
-        finally:
-            conn.close()
-
-    @staticmethod
-    def get_user_challenge(user_id, year):
-        """Получает активный челлендж пользователя на указанный год"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        try:
-            print(f"\n>>> Getting challenge for user {user_id} and year {year}")
-            
-            cursor.execute("""
-                SELECT c.challenge_id, c.title, c.goal_km, c.start_date, c.end_date, c.chat_id, c.is_system
-                FROM challenges c
-                JOIN challenge_participants cp ON c.challenge_id = cp.challenge_id
-                WHERE cp.user_id = ? 
-                AND strftime('%Y', c.start_date) = ?
-                AND c.is_system = 1
-                ORDER BY c.start_date DESC
-                LIMIT 1
-            """, (user_id, str(year)))
-            
-            row = cursor.fetchone()
-            print(f">>> Database returned: {row}")
-            
-            if row:
-                challenge = Challenge(
-                    challenge_id=row[0],
-                    title=row[1],
-                    goal_km=row[2],
-                    start_date=row[3],
-                    end_date=row[4],
-                    chat_id=row[5],
-                    is_system=bool(row[6])
-                )
-                print(f">>> Created challenge object: {challenge.__dict__}")
-                return challenge
-                
-            print(">>> No challenge found, returning default")
-            return Challenge(goal_km=0)
-            
-        finally:
-            conn.close() 
-
-    @staticmethod
-    def get_chat_challenge(chat_id: str, year: int) -> 'Challenge':
-        """Получает цель чата на указанный год"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        try:
-            # Нормализуем chat_id (убираем префикс -100 если он есть)
+            # Нормализуем chat_id
             normalized_chat_id = chat_id.replace('-100', '')
             
-            cursor.execute("""
-                SELECT challenge_id, title, goal_km, start_date, end_date, chat_id, is_system
-                FROM challenges 
-                WHERE chat_id = ? 
-                AND strftime('%Y', start_date) = ?
-                AND is_system = 0
-            """, (normalized_chat_id, str(year)))
+            participants = db.query(
+                RunningLog.user_id,
+                func.sum(RunningLog.km).label('total_km'),
+                func.count().label('runs_count')
+            ).filter(
+                RunningLog.chat_id == normalized_chat_id
+            ).group_by(
+                RunningLog.user_id
+            ).all()
             
-            row = cursor.fetchone()
-            if row:
-                return Challenge(
-                    challenge_id=row[0],
-                    title=row[1],
-                    goal_km=row[2],
-                    start_date=row[3],
-                    end_date=row[4],
-                    chat_id=row[5],
-                    is_system=bool(row[6])
-                )
-            return None
-            
+            return [{
+                'user_id': p.user_id,
+                'total_km': float(p.total_km or 0),
+                'runs_count': p.runs_count
+            } for p in participants]
+        except Exception as e:
+            logger.error(f"Error getting chat participants: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return []
         finally:
-            conn.close()
+            db.close()
 
-    @staticmethod
-    def get_all_user_challenges(user_id):
-        """Получает все активные цели пользователя"""
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            print(f">>> Getting all challenges for user {user_id}")
-            
-            # Добавляем отладочный запрос
-            cursor.execute("SELECT * FROM challenge_participants WHERE user_id = ?", (user_id,))
-            participants = cursor.fetchall()
-            print(f">>> Found participants: {participants}")
-            
-            cursor.execute("SELECT * FROM challenges WHERE is_system = 1", ())
-            challenges = cursor.fetchall()
-            print(f">>> All system challenges: {challenges}")
-            
-            # Основной запрос
-            cursor.execute("""
-                SELECT c.challenge_id, c.title, c.goal_km, c.start_date, c.end_date, 
-                       c.chat_id, c.is_system
-                FROM challenges c
-                JOIN challenge_participants cp ON c.challenge_id = cp.challenge_id
-                WHERE cp.user_id = ? 
-                AND c.is_system = 1
-                ORDER BY c.start_date DESC
-            """, (user_id,))
-            
-            challenges = []
-            for row in cursor.fetchall():
-                challenge = Challenge(
-                    challenge_id=row[0],
-                    title=row[1],
-                    goal_km=row[2],
-                    start_date=row[3],
-                    end_date=row[4],
-                    chat_id=row[5],
-                    is_system=bool(row[6])
-                )
-                challenges.append(challenge)
-            
-            print(f">>> Found {len(challenges)} challenges")
-            return challenges 
+    def save(self):
+        """Сохраняет изменения в челлендже"""
+        db = next(get_db())
+        try:
+            db.add(self)
+            db.commit()
+            db.refresh(self)
+            return True
+        except Exception as e:
+            logger.error(f"Error saving challenge: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            db.rollback()
+            return False
+        finally:
+            db.close()
 
-    @staticmethod
-    def clear_user_challenges(user_id):
-        """Очищает все личные цели пользователя"""
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            print(f">>> Clearing challenges for user {user_id}")
+    @classmethod
+    def get_user_challenge(cls, user_id, year):
+        """Получает челлендж пользователя на указанный год"""
+        db = next(get_db())
+        try:
+            return db.query(cls).filter(
+                cls.user_id == user_id,
+                extract('year', cls.start_date) == year
+            ).first()
+        except Exception as e:
+            logger.error(f"Error getting user challenge: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return None
+        finally:
+            db.close()
+
+    @classmethod
+    def get_chat_challenge(cls, chat_id: str, year: int) -> 'Challenge':
+        """Получает челлендж чата на указанный год"""
+        db = next(get_db())
+        try:
+            # Нормализуем chat_id
+            normalized_chat_id = chat_id.replace('-100', '')
             
-            try:
-                # Сначала получаем ID всех личных целей пользователя
-                cursor.execute("""
-                    SELECT c.challenge_id
-                    FROM challenges c
-                    JOIN challenge_participants cp ON c.challenge_id = cp.challenge_id
-                    WHERE cp.user_id = ? 
-                    AND c.is_system = 1
-                """, (user_id,))
-                
-                challenge_ids = [row[0] for row in cursor.fetchall()]
-                print(f">>> Found {len(challenge_ids)} challenges to delete")
-                
-                if challenge_ids:
-                    # Сначала удаляем записи из challenge_participants
-                    placeholders = ','.join(['?' for _ in challenge_ids])
-                    cursor.execute(f"""
-                        DELETE FROM challenge_participants
-                        WHERE challenge_id IN ({placeholders})
-                    """, challenge_ids)
-                    
-                    # Затем удаляем сами челленджи
-                    cursor.execute(f"""
-                        DELETE FROM challenges
-                        WHERE challenge_id IN ({placeholders})
-                    """, challenge_ids)
-                    
-                    conn.commit()
-                    print(f">>> Successfully deleted {len(challenge_ids)} challenges")
-                    return True
-                    
-                return False
-                
-            except Exception as e:
-                print(f">>> Error clearing challenges: {str(e)}")
-                conn.rollback()
-                raise 
+            return db.query(cls).filter(
+                cls.chat_id == normalized_chat_id,
+                extract('year', cls.start_date) == year,
+                cls.is_system == True
+            ).first()
+        except Exception as e:
+            logger.error(f"Error getting chat challenge: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return None
+        finally:
+            db.close()
+
+    @classmethod
+    def get_all_user_challenges(cls, user_id):
+        """Получает все челленджи пользователя"""
+        db = next(get_db())
+        try:
+            return db.query(cls).filter(
+                cls.user_id == user_id
+            ).order_by(
+                cls.start_date.desc()
+            ).all()
+        except Exception as e:
+            logger.error(f"Error getting all user challenges: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return []
+        finally:
+            db.close()
+
+    @classmethod
+    def clear_user_challenges(cls, user_id):
+        """Удаляет все челленджи пользователя"""
+        db = next(get_db())
+        try:
+            db.query(cls).filter(
+                cls.user_id == user_id
+            ).delete()
+            db.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Error clearing user challenges: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            db.rollback()
+            return False
+        finally:
+            db.close()
 
     def get_year_progress(self):
-        """Получает прогресс с начала года"""
-        with get_connection() as conn:
-            cursor = conn.cursor()
+        """Получает прогресс за год"""
+        from database.models.running_log import RunningLog
+        
+        db = next(get_db())
+        try:
+            # Нормализуем chat_id если он есть
+            normalized_chat_id = str(int(float(self.chat_id))).replace('-100', '') if self.chat_id is not None else None
             
-            if self.is_system:  # Для личной цели
-                print(f">>> Getting year progress for personal challenge {self.challenge_id}")
-                
-                # Получаем user_id из challenge_participants
-                cursor.execute("""
-                    SELECT user_id 
-                    FROM challenge_participants 
-                    WHERE challenge_id = ?
-                """, (self.challenge_id,))
-                user_id = cursor.fetchone()
-                
-                if not user_id:
-                    print(">>> No user_id found")
-                    return 0.0
-                    
-                # Используем правильное название колонки date_added
-                cursor.execute("""
-                    SELECT COALESCE(SUM(km), 0)
-                    FROM running_log
-                    WHERE user_id = ?
-                    AND strftime('%Y', date_added) = ?
-                """, (user_id[0], self.start_date[:4]))
-                
-                result = cursor.fetchone()
-                total_km = float(result[0]) if result else 0.0
-                print(f">>> Year progress: {total_km} km")
-                return total_km 
+            if self.is_system and normalized_chat_id:
+                # Для системного челленджа учитываем все пробежки в чате
+                total_km = db.query(func.sum(RunningLog.km)).filter(
+                    RunningLog.chat_id == normalized_chat_id,
+                    extract('year', RunningLog.date_added) == datetime.now().year
+                ).scalar()
+            else:
+                # Для обычного челленджа учитываем только пробежки участников
+                total_km = db.query(func.sum(RunningLog.km)).join(
+                    cls, RunningLog.user_id == cls.user_id
+                ).filter(
+                    cls.challenge_id == self.challenge_id,
+                    extract('year', RunningLog.date_added) == datetime.now().year
+                ).scalar()
+            
+            return float(total_km or 0.0)
+        except Exception as e:
+            logger.error(f"Error getting year progress: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return 0.0
+        finally:
+            db.close() 

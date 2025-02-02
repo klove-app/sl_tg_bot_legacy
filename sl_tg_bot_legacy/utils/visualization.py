@@ -1,13 +1,14 @@
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import seaborn as sns
 import io
 from database.base import get_db
 from database.models.user import User
 from database.models.running_log import RunningLog
 from sqlalchemy import func, extract
 from utils.formatters import round_km
-from datetime import datetime
+from datetime import datetime, timedelta
 from database.logger import logger
 import traceback
 

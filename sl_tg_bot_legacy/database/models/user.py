@@ -33,50 +33,28 @@ class User(Base):
             should_close = False
             
         try:
-            # Проверяем подключение
-            logger.debug("get_by_id: Checking database connection")
-            connection = db.connection()
-            logger.debug(f"get_by_id: Database URL: {connection.engine.url}")
+            # Создаем запрос
+            query = db.query(cls).filter(cls.user_id == str(user_id))
             
-            # Проверяем текущую базу данных
-            result = connection.execute("SELECT current_database();").scalar()
-            logger.debug(f"get_by_id: Current database: {result}")
-            
-            # Пробуем найти пользователя
-            logger.debug(f"get_by_id: Creating query for user_id: {user_id}")
-            query = db.query(cls)
-            logger.debug(f"get_by_id: Base query: {str(query)}")
-            
-            # Добавляем фильтр
-            query = query.filter(cls.user_id == str(user_id))
-            logger.debug(f"get_by_id: Query with filter: {str(query)}")
-            
-            # Компилируем запрос для логов
-            compiled_query = query.statement.compile(compile_kwargs={'literal_binds': True})
-            logger.debug(f"get_by_id: Compiled SQL: {str(compiled_query)}")
+            # Выводим SQL-запрос
+            sql = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
+            logger.info(f"get_by_id: SQL query: {sql}")
             
             # Выполняем запрос
-            logger.debug("get_by_id: Executing query...")
             user = query.first()
             logger.info(f"get_by_id: Found user: {user is not None}")
             
             if user:
-                logger.debug(f"get_by_id: User details - username: {user.username}, chat_type: {user.chat_type}, user_id: {user.user_id}, type of user_id: {type(user.user_id)}")
-                logger.debug(f"get_by_id: Full user object: {user.__dict__}")
+                logger.debug(f"get_by_id: User details - username: {user.username}, chat_type: {user.chat_type}, user_id: {user.user_id}")
             else:
-                logger.debug("get_by_id: User not found in database")
-                # Проверяем, есть ли пользователь напрямую через SQL
-                result = connection.execute(
-                    "SELECT * FROM users WHERE user_id = %s",
-                    [str(user_id)]
+                # Если пользователь не найден, проверяем напрямую через SQL
+                result = db.execute(
+                    "SELECT * FROM users WHERE user_id = :user_id",
+                    {"user_id": str(user_id)}
                 ).first()
-                logger.debug(f"get_by_id: Direct SQL query result: {result}")
+                logger.info(f"get_by_id: Direct SQL query result: {result}")
             
             return user
-        except Exception as e:
-            logger.error(f"get_by_id: Error during query execution: {str(e)}")
-            logger.error(f"get_by_id: Full traceback: {traceback.format_exc()}")
-            raise
         finally:
             if should_close:
                 logger.debug("get_by_id: Closing database session")

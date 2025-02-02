@@ -5,7 +5,7 @@ TOKEN = 'YOUR_BOT_TOKEN'
 ADMIN_IDS = []
 
 # Настройки базы данных
-DATABASE_URL = 'sqlite:///running_bot.db'
+DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/running_bot'
 
 # Настройки логирования
 LOG_FILE = 'bot.log'
