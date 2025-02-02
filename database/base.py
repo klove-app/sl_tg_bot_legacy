@@ -11,6 +11,8 @@ logger.info(f"Database path: {DB_PATH}")
 
 # Создаем URL для подключения к базе данных
 SQLALCHEMY_DATABASE_URL = DATABASE_URL
+if SQLALCHEMY_DATABASE_URL.startswith('postgres://'):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 logger.info(f"Database URL: {SQLALCHEMY_DATABASE_URL}")
 
 # Создаем движок базы данных с пулом соединений

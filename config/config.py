@@ -2,8 +2,9 @@
 ADMIN_IDS = ['1431390352']
 
 # Настройки базы данных
-DATABASE_NAME = 'running_bot.db'  # База данных в корне проекта
-DATABASE_URL = f'sqlite:///{DATABASE_NAME}'
+import os
+DATABASE_NAME = 'running_bot.db'  # Для локальной разработки
+DATABASE_URL = os.getenv('DATABASE_URL', f'sqlite:///{DATABASE_NAME}')  # Используем Railway URL в продакшене
 
 # Настройки Stability AI
 STABILITY_API_HOST = 'https://api.stability.ai'
