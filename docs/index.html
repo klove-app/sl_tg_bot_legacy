@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="RunTracker Bot - удобный Telegram бот для отслеживания ваших пробежек. Ставьте цели, следите за прогрессом и участвуйте в челленджах.">
+    <meta name="keywords" content="runtracker, бег, пробежки, телеграм бот, статистика бега">
+    <meta name="author" content="RunTracker Team">
+    <title>RunTracker Bot - Ваш помощник для бега</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #FFB100;
+            --secondary-color: #4CAF50;
+            --text-color: #2C3E50;
+            --bg-color: #FAFAFA;
+            --gradient-start: #FFB100;
+            --gradient-end: #FF9800;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #FFF8E1 0%, #FFFFFF 100%);
+        }
+        
+        .container {
+            max-width: 1000px;
+            background: white;
+            padding: 60px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+        
+        .hero {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            margin: -60px -60px 40px;
+            padding: 80px 40px;
+            border-radius: 24px 24px 0 0;
+            color: white;
+        }
+        
+        h1 {
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        
+        p {
+            font-size: 1.4em;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin: 60px 0;
+            text-align: left;
+        }
+        
+        .feature {
+            padding: 30px;
+            background: linear-gradient(135deg, #F8F9FA, #FFFFFF);
+            border-radius: 16px;
+            border: 1px solid #E0E0E0;
+            transition: transform 0.3s ease;
+        }
+        
+        .feature:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-icon {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        
+        .feature h3 {
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            color: var(--text-color);
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: var(--secondary-color);
+            color: white;
+            text-decoration: none;
+            padding: 20px 40px;
+            border-radius: 30px;
+            font-weight: 500;
+            font-size: 1.2em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(76, 175, 80, 0.3);
+        }
+        
+        .links {
+            margin-top: 40px;
+        }
+        
+        .links a {
+            color: var(--text-color);
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 10px 20px;
+            border-radius: 20px;
+            background: #F5F7FA;
+            transition: all 0.3s ease;
+        }
+        
+        .links a:hover {
+            background: #FFE0B2;
+            color: var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px;
+            }
+            
+            .hero {
+                margin: -30px -30px 30px;
+                padding: 60px 20px;
+            }
+            
+            h1 {
+                font-size: 2.5em;
+            }
+            
+            p {
+                font-size: 1.2em;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <div class="emoji">🏃‍♂️</div>
+            <h1>RunTracker Bot</h1>
+            <p>Ваш личный помощник для отслеживания пробежек в Telegram</p>
+            <a href="https://t.me/sl_run_bot" class="cta-button">Начать использовать</a>
+        </div>
+        
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">📊</div>
+                <h3>Удобная статистика</h3>
+                <p>Отслеживайте свой прогресс с подробной статистикой за день, месяц и год</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🎯</div>
+                <h3>Годовые цели</h3>
+                <p>Ставьте цели и следите за их достижением в реальном времени</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📸</div>
+                <h3>Фото с пробежек</h3>
+                <p>Сохраняйте памятные моменты с каждой пробежки</p>
+            </div>
+        </div>
+        
+        <div class="links">
+            <a href="/guide">Инструкция</a>
+            <a href="https://t.me/leamony">Поддержка</a>
+        </div>
+    </div>
+</body>
+</html> 

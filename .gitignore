@@ -1,10 +1,17 @@
+# OS
+.DS_Store
+Thumbs.db
+node_modules/
+.cache/
+.netlify/
+website/
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -23,7 +30,12 @@ wheels/
 
 # Virtual Environment
 venv/
+venv311/
+env/
 ENV/
+.venv/
+.env/
+.ENV/
 
 # IDE
 .idea/
@@ -36,9 +48,12 @@ ENV/
 
 # Local development
 .env
+.env.*
 *.db
+*.sqlite
 *.sqlite3
+bot.db
 
-# OS
-.DS_Store
-Thumbs.db 
+# Config files
+config/config
+config/config.py
