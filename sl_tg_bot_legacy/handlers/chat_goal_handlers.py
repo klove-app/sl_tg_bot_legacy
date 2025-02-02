@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from handlers.base_handler import BaseHandler
 from telebot.apihelper import ApiTelegramException
 import traceback
-from database.db import get_connection
 from database.models.user import User
 from database.models.group_goals import GroupGoals
 from utils.bot_instance import bot
@@ -668,7 +667,7 @@ def handle_set_chat_goal(message: Message):
         
         # Получаем статистику за прошлый год для сравнения
         last_year = year - 1
-        last_year_stats = RunningLog.get_chat_stats(str(message.chat.id), last_year)
+        last_year_stats = RunningLog.get_chat_stats(chat_id, last_year)
         
         # Создаем новую цель
         GroupGoals.create_goal(year, goal_km)
