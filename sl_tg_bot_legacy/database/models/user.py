@@ -33,6 +33,15 @@ class User(Base):
             should_close = False
             
         try:
+            # Проверяем подключение
+            logger.debug("get_by_id: Checking database connection")
+            connection = db.connection()
+            logger.debug(f"get_by_id: Database URL: {connection.engine.url}")
+            
+            # Проверяем текущую базу данных
+            result = connection.execute("SELECT current_database();").scalar()
+            logger.debug(f"get_by_id: Current database: {result}")
+            
             # Пробуем найти пользователя
             logger.debug(f"get_by_id: Creating query for user_id: {user_id}")
             query = db.query(cls)
@@ -56,6 +65,12 @@ class User(Base):
                 logger.debug(f"get_by_id: Full user object: {user.__dict__}")
             else:
                 logger.debug("get_by_id: User not found in database")
+                # Проверяем, есть ли пользователь напрямую через SQL
+                result = connection.execute(
+                    "SELECT * FROM users WHERE user_id = %s",
+                    [str(user_id)]
+                ).first()
+                logger.debug(f"get_by_id: Direct SQL query result: {result}")
             
             return user
         except Exception as e:
