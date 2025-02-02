@@ -1,7 +1,12 @@
 from database.models.team import Team
-from database.db import get_connection
+from database.models.user import User
+from database.models.running_log import RunningLog
+from database.base import get_db
+from sqlalchemy import func, extract, text
 from utils.formatters import round_km
-from datetime import datetime
+from datetime import datetime, timedelta
+from database.logger import logger
+import traceback
 
 class TeamService:
     @staticmethod
@@ -10,36 +15,44 @@ class TeamService:
 
     @staticmethod
     def get_team_stats(team_id):
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT u.username,
-                   COALESCE(SUM(r.km), 0) as total_km
-            FROM users u
-            JOIN team_members tm ON u.user_id = tm.user_id
-            LEFT JOIN running_log r ON u.user_id = r.user_id
-            WHERE tm.team_id = ?
-            AND r.date_added >= date('now', '-30 days')
-            GROUP BY u.username
-            ORDER BY total_km DESC
-        """, (team_id,))
-        
-        stats = cursor.fetchall()
-        conn.close()
-        
-        return [
-            {'username': row[0], 'total_km': round_km(row[1])}
-            for row in stats
-        ]
+        """Получение статистики команды"""
+        db = next(get_db())
+        try:
+            # Получаем статистику за последние 30 дней
+            thirty_days_ago = datetime.now().date() - timedelta(days=30)
+            
+            stats = db.query(
+                User.username,
+                func.sum(RunningLog.km).label('total_km')
+            ).join(
+                Team.members
+            ).outerjoin(
+                RunningLog, User.user_id == RunningLog.user_id
+            ).filter(
+                Team.team_id == team_id,
+                RunningLog.date_added >= thirty_days_ago
+            ).group_by(
+                User.username
+            ).order_by(
+                text('total_km DESC')
+            ).all()
+            
+            return [{
+                'username': s.username,
+                'total_km': round_km(s.total_km or 0)
+            } for s in stats]
+        except Exception as e:
+            logger.error(f"Error getting team stats: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return []
+        finally:
+            db.close()
 
     @staticmethod
     def get_user_teams_stats(user_id):
+        """Получение статистики команд пользователя"""
         teams = Team.get_user_teams(user_id)
-        return [
-            {
-                'team': team,
-                'stats': TeamService.get_team_stats(team.team_id)
-            }
-            for team in teams
-        ] 
+        return [{
+            'team': team,
+            'stats': TeamService.get_team_stats(team.team_id)
+        } for team in teams] 
