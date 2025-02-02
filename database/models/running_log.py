@@ -1,9 +1,8 @@
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, func, extract
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, func, extract, text, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database.base import Base, get_db, Session, SessionLocal
 from database.logger import logger
-from database.db import get_connection
 import traceback
 from typing import List
 
@@ -11,15 +10,21 @@ class RunningLog(Base):
     __tablename__ = "running_log"
 
     log_id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.user_id"))
+    user_id = Column(String, ForeignKey("users.user_id"), index=True)
     km = Column(Float)
-    date_added = Column(Date)
+    date_added = Column(Date, index=True)
     notes = Column(String, nullable=True)
-    chat_id = Column(String, nullable=True)
-    chat_type = Column(String, nullable=True)
+    chat_id = Column(String, nullable=True, index=True)
+    chat_type = Column(String, nullable=True, index=True)
 
     # Отношение к пользователю
     user = relationship("User", back_populates="runs")
+
+    # Создаем составные индексы для оптимизации запросов
+    __table_args__ = (
+        Index('idx_user_date', 'user_id', 'date_added'),
+        Index('idx_chat_date', 'chat_id', 'date_added'),
+    )
 
     @classmethod
     def add_entry(cls, user_id: str, km: float, date_added: datetime.date, notes: str = None, chat_id: str = None, chat_type: str = None, db = None) -> bool:
@@ -366,334 +371,159 @@ class RunningLog(Base):
 
     @classmethod
     def get_chat_stats(cls, chat_id: str, year: int = None, month: int = None, chat_type: str = None):
-        """Получить статистику чата за год или месяц"""
+        """Получить статистику чата"""
         if year is None:
             year = datetime.now().year
-            
+
         db = next(get_db())
         try:
-            # Получаем всех пользователей, которые бегали в этом году
-            base_query = db.query(cls).filter(
+            query = db.query(
+                func.sum(cls.km).label('total_km'),
+                func.count().label('runs_count'),
+                func.count(func.distinct(cls.user_id)).label('users_count')
+            ).filter(
+                cls.chat_id == chat_id,
                 extract('year', cls.date_added) == year
             )
-            
-            if month:
-                base_query = base_query.filter(extract('month', cls.date_added) == month)
-            
-            # Получаем статистику
-            stats = base_query.with_entities(
-                func.count().label('runs_count'),
-                func.sum(cls.km).label('total_km'),
-                func.avg(cls.km).label('avg_km'),
-                func.max(cls.km).label('best_run')
-            ).first()
-            
-            # Получаем количество уникальных пользователей
-            users_count = base_query.with_entities(
-                func.count(func.distinct(cls.user_id))
-            ).scalar() or 0
-            
-            # Проверяем, что результаты не None
-            runs_count = stats[0] if stats[0] is not None else 0
-            total_km = float(stats[1]) if stats[1] is not None else 0.0
-            avg_km = float(stats[2]) if stats[2] is not None else 0.0
-            best_run = float(stats[3]) if stats[3] is not None else 0.0
-            
-            # Получаем статистику по месяцам, если запрошен год
-            monthly_stats = []
-            if not month:
-                monthly_query = db.query(
-                    extract('month', cls.date_added).label('month'),
-                    func.sum(cls.km).label('monthly_km')
-                ).filter(
-                    extract('year', cls.date_added) == year
-                ).group_by(
-                    extract('month', cls.date_added)
-                ).order_by(
-                    extract('month', cls.date_added)
-                ).all()
-                
-                monthly_stats = [{
-                    'month': int(r.month),
-                    'total_km': float(r.monthly_km or 0)
-                } for r in monthly_query]
+
+            if month is not None:
+                query = query.filter(extract('month', cls.date_added) == month)
+
+            if chat_type is not None:
+                query = query.filter(cls.chat_type == chat_type)
+
+            result = query.first()
             
             return {
-                'users_count': users_count,
-                'runs_count': runs_count,
-                'total_km': total_km,
-                'avg_km': avg_km,
-                'best_run': best_run,
-                'monthly_stats': monthly_stats
+                'total_km': float(result.total_km or 0),
+                'runs_count': result.runs_count or 0,
+                'users_count': result.users_count or 0
             }
         except Exception as e:
             logger.error(f"Error getting chat stats: {e}")
-            logger.error(f"Full traceback: {traceback.format_exc()}")
-            return {
-                'users_count': 0,
-                'runs_count': 0,
-                'total_km': 0.0,
-                'avg_km': 0.0,
-                'best_run': 0.0,
-                'monthly_stats': []
-            }
+            return {'total_km': 0, 'runs_count': 0, 'users_count': 0}
 
     @classmethod
     def get_chat_top_users(cls, chat_id: str, year: int = None, limit: int = 5, chat_type: str = None):
-        """Получить топ пользователей чата за год"""
+        """Получить топ пользователей чата"""
         if year is None:
             year = datetime.now().year
-            
+
         db = next(get_db())
         try:
             query = db.query(
                 cls.user_id,
                 func.sum(cls.km).label('total_km'),
+                func.count().label('runs_count')
+            ).filter(
+                cls.chat_id == chat_id,
+                extract('year', cls.date_added) == year
+            )
+
+            if chat_type is not None:
+                query = query.filter(cls.chat_type == chat_type)
+
+            results = query.group_by(
+                cls.user_id
+            ).order_by(
+                text('total_km DESC')
+            ).limit(limit).all()
+
+            return [{
+                'user_id': result.user_id,
+                'total_km': float(result.total_km or 0),
+                'runs_count': result.runs_count
+            } for result in results]
+        except Exception as e:
+            logger.error(f"Error getting chat top users: {e}")
+            return []
+
+    @classmethod
+    def get_chat_stats_until_date(cls, chat_id: str, year: int, month: int, day: int, chat_type: str = None):
+        """Получить статистику чата до определенной даты"""
+        db = next(get_db())
+        try:
+            query = db.query(
+                func.sum(cls.km).label('total_km'),
                 func.count().label('runs_count'),
-                func.avg(cls.km).label('avg_km'),
-                func.max(cls.km).label('best_run')
+                func.count(func.distinct(cls.user_id)).label('users_count')
+            ).filter(
+                cls.chat_id == chat_id,
+                extract('year', cls.date_added) == year,
+                extract('month', cls.date_added) == month,
+                extract('day', cls.date_added) <= day
+            )
+
+            if chat_type is not None:
+                query = query.filter(cls.chat_type == chat_type)
+
+            result = query.first()
+            
+            return {
+                'total_km': float(result.total_km or 0),
+                'runs_count': result.runs_count or 0,
+                'users_count': result.users_count or 0
+            }
+        except Exception as e:
+            logger.error(f"Error getting chat stats until date: {e}")
+            return {'total_km': 0, 'runs_count': 0, 'users_count': 0}
+
+    @classmethod
+    def get_total_stats(cls, year: int, month: int = None, chat_type: str = None):
+        """Получить общую статистику по всем чатам"""
+        db = next(get_db())
+        try:
+            query = db.query(
+                func.sum(cls.km).label('total_km'),
+                func.count().label('runs_count'),
+                func.count(func.distinct(cls.user_id)).label('users_count'),
+                func.count(func.distinct(cls.chat_id)).label('chats_count')
+            ).filter(
+                extract('year', cls.date_added) == year
+            )
+
+            if month is not None:
+                query = query.filter(extract('month', cls.date_added) == month)
+
+            if chat_type is not None:
+                query = query.filter(cls.chat_type == chat_type)
+
+            result = query.first()
+            
+            return {
+                'total_km': float(result.total_km or 0),
+                'runs_count': result.runs_count or 0,
+                'users_count': result.users_count or 0,
+                'chats_count': result.chats_count or 0
+            }
+        except Exception as e:
+            logger.error(f"Error getting total stats: {e}")
+            return {'total_km': 0, 'runs_count': 0, 'users_count': 0, 'chats_count': 0}
+
+    @classmethod
+    def get_chat_stats_all(cls, year: int):
+        """Получить статистику по всем чатам"""
+        db = next(get_db())
+        try:
+            results = db.query(
+                cls.chat_id,
+                func.sum(cls.km).label('total_km'),
+                func.count().label('runs_count'),
+                func.count(func.distinct(cls.user_id)).label('users_count')
             ).filter(
                 extract('year', cls.date_added) == year
             ).group_by(
-                cls.user_id
+                cls.chat_id
             ).order_by(
-                func.sum(cls.km).desc()
-            ).limit(limit).all()
-            
+                text('total_km DESC')
+            ).all()
+
             return [{
-                'user_id': r.user_id,
-                'total_km': float(r.total_km or 0),
-                'runs_count': r.runs_count,
-                'avg_km': float(r.avg_km or 0),
-                'best_run': float(r.best_run or 0)
-            } for r in query]
+                'chat_id': result.chat_id,
+                'total_km': float(result.total_km or 0),
+                'runs_count': result.runs_count,
+                'users_count': result.users_count
+            } for result in results]
         except Exception as e:
-            logger.error(f"Error getting chat top users: {e}")
-            logger.error(f"Full traceback: {traceback.format_exc()}")
-            return []
-
-    @staticmethod
-    def get_chat_stats_sqlite(chat_id: str, year: int, month: int = None, chat_type: str = None) -> dict:
-        """Получает статистику чата за указанный год и опционально месяц"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        try:
-            base_query = """
-                SELECT 
-                    COALESCE(SUM(km), 0) as total_km,
-                    COUNT(*) as runs_count,
-                    COUNT(DISTINCT user_id) as users_count
-                FROM running_log
-                WHERE chat_id = ? 
-                AND strftime('%Y', date_added) = ?
-            """
-            
-            params = [chat_id, str(year)]
-            
-            if month is not None:
-                base_query += " AND strftime('%m', date_added) = ?"
-                # Добавляем ведущий ноль для месяцев 1-9
-                params.append(str(month).zfill(2))
-            
-            if chat_type:
-                base_query += " AND chat_type = ?"
-                params.append(chat_type)
-            
-            print(f"""
-            Debug info:
-            - Total KM: {cursor.execute("SELECT SUM(km) FROM running_log WHERE chat_id = ? AND strftime('%Y', date_added) = ?", [chat_id, str(year)]).fetchone()[0]}
-            - Number of runs: {cursor.execute("SELECT COUNT(*) FROM running_log WHERE chat_id = ? AND strftime('%Y', date_added) = ?", [chat_id, str(year)]).fetchone()[0]}
-            - Number of unique users: {cursor.execute("SELECT COUNT(DISTINCT user_id) FROM running_log WHERE chat_id = ? AND strftime('%Y', date_added) = ?", [chat_id, str(year)]).fetchone()[0]}
-            - Chat ID used in query: {chat_id}
-            - Year used in query: {year}
-            """)
-            
-            cursor.execute(base_query, params)
-            result = cursor.fetchone()
-            
-            return {
-                'total_km': result[0] or 0,
-                'runs_count': result[1] or 0,
-                'users_count': result[2] or 0
-            }
-            
-        finally:
-            cursor.close()
-            conn.close()
-
-    @staticmethod
-    def get_top_runners_sqlite(chat_id: str, year: int, limit: int = 3, chat_type: str = None) -> list:
-        """Получает топ бегунов чата за указанный год"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        try:
-            base_query = """
-                SELECT 
-                    r.user_id,
-                    SUM(r.km) as total_km,
-                    COUNT(*) as runs_count
-                FROM running_log r
-                WHERE r.chat_id = ? 
-                AND strftime('%Y', r.date_added) = ?
-            """
-            
-            params = [chat_id, str(year)]
-            
-            if chat_type:
-                base_query += " AND r.chat_type = ?"
-                params.append(chat_type)
-            
-            base_query += """
-                GROUP BY r.user_id
-                ORDER BY total_km DESC
-                LIMIT ?
-            """
-            params.append(limit)
-            
-            cursor.execute(base_query, params)
-            results = cursor.fetchall()
-            
-            # Получаем имена пользователей отдельным запросом
-            formatted_results = []
-            for row in results:
-                user_id = row[0]
-                cursor.execute("SELECT username FROM users WHERE user_id = ?", (user_id,))
-                user_result = cursor.fetchone()
-                username = user_result[0] if user_result else f"User {user_id}"
-                
-                formatted_results.append({
-                    'user_name': username,
-                    'total_km': row[1],
-                    'runs_count': row[2]
-                })
-            
-            return formatted_results
-            
-        finally:
-            cursor.close()
-            conn.close()
-
-    @staticmethod
-    def get_chat_stats_until_date_sqlite(chat_id: str, year: int, month: int, day: int, chat_type: str = None) -> dict:
-        """Получает статистику чата за указанный год до определенной даты"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        try:
-            base_query = """
-                SELECT 
-                    COALESCE(SUM(km), 0) as total_km,
-                    COUNT(*) as runs_count,
-                    COUNT(DISTINCT user_id) as users_count
-                FROM running_log
-                WHERE chat_id = ? 
-                AND strftime('%Y', date_added) = ?
-                AND (
-                    strftime('%m', date_added) < ? 
-                    OR (
-                        strftime('%m', date_added) = ? 
-                        AND strftime('%d', date_added) <= ?
-                    )
-                )
-            """
-            
-            # Добавляем ведущие нули для месяца и дня
-            month_str = str(month).zfill(2)
-            day_str = str(day).zfill(2)
-            
-            params = [chat_id, str(year), month_str, month_str, day_str]
-            
-            if chat_type:
-                base_query += " AND chat_type = ?"
-                params.append(chat_type)
-            
-            cursor.execute(base_query, params)
-            result = cursor.fetchone()
-            
-            return {
-                'total_km': result[0] or 0,
-                'runs_count': result[1] or 0,
-                'users_count': result[2] or 0
-            }
-            
-        finally:
-            cursor.close()
-            conn.close()
-
-    @staticmethod
-    def get_total_stats(year: int, month: int = None, chat_type: str = None) -> dict:
-        """Получает общую статистику за год или месяц"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        try:
-            base_query = """
-                SELECT 
-                    COALESCE(SUM(km), 0) as total_km,
-                    COUNT(*) as runs_count,
-                    COUNT(DISTINCT user_id) as users_count,
-                    COALESCE(AVG(km), 0) as avg_km
-                FROM running_log
-                WHERE strftime('%Y', date_added) = ?
-            """
-            params = [str(year)]
-            
-            if month:
-                base_query += " AND strftime('%m', date_added) = ?"
-                params.append(str(month).zfill(2))
-                
-            if chat_type:
-                base_query += " AND chat_type = ?"
-                params.append(chat_type)
-            
-            cursor.execute(base_query, params)
-            result = cursor.fetchone()
-            
-            return {
-                'total_km': result[0] or 0,
-                'runs_count': result[1] or 0,
-                'users_count': result[2] or 0,
-                'avg_km': result[3] or 0
-            }
-            
-        finally:
-            cursor.close()
-            conn.close()
-
-    @staticmethod
-    def get_chat_stats_all(year: int) -> list:
-        """Получает статистику по всем чатам за год"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        try:
-            query = """
-                SELECT 
-                    chat_id,
-                    COALESCE(SUM(km), 0) as total_km,
-                    COUNT(*) as runs_count,
-                    COUNT(DISTINCT user_id) as users_count
-                FROM running_log
-                WHERE strftime('%Y', date_added) = ?
-                AND chat_id IS NOT NULL
-                GROUP BY chat_id
-            """
-            
-            cursor.execute(query, (str(year),))
-            results = cursor.fetchall()
-            
-            return [
-                {
-                    'chat_id': row[0],
-                    'total_km': row[1] or 0,
-                    'runs_count': row[2] or 0,
-                    'users_count': row[3] or 0
-                }
-                for row in results
-            ]
-            
-        finally:
-            cursor.close()
-            conn.close() 
+            logger.error(f"Error getting all chat stats: {e}")
+            return [] 

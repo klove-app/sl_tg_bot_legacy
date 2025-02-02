@@ -18,46 +18,73 @@ class User(Base):
     # Отношение к пробежкам
     runs = relationship("RunningLog", back_populates="user")
 
+    @staticmethod
+    def _normalize_user_id(user_id) -> str:
+        """Нормализует ID пользователя"""
+        original_id = user_id
+        normalized_id = str(user_id).strip()
+        logger.debug(f"Normalizing user_id: original='{original_id}' ({type(original_id)}) -> normalized='{normalized_id}' ({type(normalized_id)})")
+        return normalized_id
+
     @classmethod
     def get_by_id(cls, user_id: str, db = None) -> 'User':
         """Получить пользователя по ID"""
-        logger.info(f"get_by_id: Looking for user with ID {user_id}")
-        logger.info(f"get_by_id: Type of user_id: {type(user_id)}")
+        logger.debug(f"get_by_id called with user_id='{user_id}' ({type(user_id)})")
         
         if db is None:
-            logger.debug("get_by_id: Creating new database session")
             db = next(get_db())
             should_close = True
+            logger.debug("Created new database session")
         else:
-            logger.debug("get_by_id: Using existing database session")
             should_close = False
+            logger.debug("Using existing database session")
             
         try:
-            # Создаем запрос
-            query = db.query(cls).filter(cls.user_id == str(user_id))
+            normalized_id = cls._normalize_user_id(user_id)
+            logger.debug(f"Searching for user with normalized_id='{normalized_id}'")
             
-            # Выводим SQL-запрос
-            sql = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
-            logger.info(f"get_by_id: SQL query: {sql}")
+            # Проверяем соединение с базой
+            try:
+                db.execute("SELECT 1")
+                logger.debug("Database connection is alive")
+            except Exception as e:
+                logger.error(f"Database connection error: {e}")
+                raise
             
-            # Выполняем запрос
-            user = query.first()
-            logger.info(f"get_by_id: Found user: {user is not None}")
+            # Пробуем разные варианты поиска
+            result = None
             
-            if user:
-                logger.debug(f"get_by_id: User details - username: {user.username}, chat_type: {user.chat_type}, user_id: {user.user_id}")
+            # 1. Стандартный поиск через ORM
+            result = db.query(cls).filter(cls.user_id == normalized_id).first()
+            logger.debug(f"ORM search result: {result}")
+            
+            if not result:
+                # 2. Поиск через CAST
+                sql = f"SELECT * FROM users WHERE CAST(user_id AS TEXT) = CAST('{normalized_id}' AS TEXT)"
+                raw_result = db.execute(sql).fetchone()
+                logger.debug(f"Raw SQL with CAST result: {raw_result}")
+                
+                if raw_result:
+                    # Если нашли через SQL, но не через ORM - создаем объект
+                    result = cls()
+                    for idx, col in enumerate(raw_result.keys()):
+                        setattr(result, col, raw_result[idx])
+                    logger.info(f"Created user object from raw SQL result: {result.user_id}, {result.username}")
+            
+            if result:
+                logger.info(f"Found user: {result.user_id}, {result.username}")
             else:
-                # Если пользователь не найден, проверяем напрямую через SQL
-                result = db.execute(
-                    "SELECT * FROM users WHERE user_id = :user_id",
-                    {"user_id": str(user_id)}
-                ).first()
-                logger.info(f"get_by_id: Direct SQL query result: {result}")
+                logger.info(f"User not found: {normalized_id}")
             
-            return user
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error in get_by_id: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            raise
         finally:
             if should_close:
-                logger.debug("get_by_id: Closing database session")
+                logger.debug("Closing database session")
                 db.close()
 
     @classmethod
@@ -74,11 +101,31 @@ class User(Base):
             should_close = False
             
         try:
+            # Нормализуем данные
+            normalized_user_id = cls._normalize_user_id(user_id)
+            normalized_username = str(username).strip() if username else f"user_{normalized_user_id}"
+            normalized_chat_type = str(chat_type).strip().lower()
+            
+            # Проверяем, существует ли уже пользователь
+            existing_user = cls.get_by_id(normalized_user_id, db=db)
+            if existing_user:
+                logger.info(f"create: User {normalized_user_id} already exists, updating")
+                existing_user.username = normalized_username
+                existing_user.chat_type = normalized_chat_type
+                db.add(existing_user)
+                db.commit()
+                db.refresh(existing_user)
+                return existing_user
+            
             # Создаем нового пользователя
             user = cls(
-                user_id=str(user_id),  # Убеждаемся, что user_id - строка
-                username=username,
-                chat_type=chat_type
+                user_id=normalized_user_id,
+                username=normalized_username,
+                chat_type=normalized_chat_type,
+                yearly_goal=0,
+                yearly_progress=0,
+                goal_km=0,
+                is_active=True
             )
             logger.debug(f"create: Adding user to session")
             db.add(user)
@@ -89,8 +136,9 @@ class User(Base):
             return user
         except Exception as e:
             logger.error(f"create: Error creating user: {e}")
+            logger.error(f"create: Full traceback: {traceback.format_exc()}")
             db.rollback()
-            raise
+            return None
         finally:
             if should_close:
                 logger.debug("create: Closing database session")

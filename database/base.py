@@ -13,10 +13,13 @@ logger.info(f"Database path: {DB_PATH}")
 SQLALCHEMY_DATABASE_URL = DATABASE_URL
 logger.info(f"Database URL: {SQLALCHEMY_DATABASE_URL}")
 
-# Создаем движок базы данных
+# Создаем движок базы данных с пулом соединений
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    pool_size=5,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=1800
 )
 logger.info("Database engine created")
 
