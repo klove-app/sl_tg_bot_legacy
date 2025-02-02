@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Boolean, REAL
+from sqlalchemy import Column, Integer, String, Float, Boolean, REAL, Text
 from sqlalchemy.orm import Session, relationship
 from database.base import Base, get_db
 from database.logger import logger
@@ -6,13 +6,13 @@ from database.logger import logger
 class User(Base):
     __tablename__ = "users"
 
-    user_id = Column(String, primary_key=True, index=True)
-    username = Column(String)
+    user_id = Column(Text, primary_key=True, index=True)
+    username = Column(Text)
     yearly_goal = Column(REAL, nullable=True)
     yearly_progress = Column(REAL, nullable=True)
     goal_km = Column(Float, default=0)
     is_active = Column(Boolean, default=True)
-    chat_type = Column(String, default='group')  # 'private' или 'group'
+    chat_type = Column(Text, default='group')  # 'private' или 'group'
 
     # Отношение к пробежкам
     runs = relationship("RunningLog", back_populates="user")
