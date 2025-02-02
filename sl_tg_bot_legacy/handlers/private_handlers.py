@@ -4,6 +4,7 @@ from database.models.running_log import RunningLog
 from datetime import datetime
 from handlers.base_handler import BaseHandler
 from typing import Optional
+from database.db import SessionLocal
 
 class PrivateHandler(BaseHandler):
     def register(self):
@@ -42,26 +43,30 @@ class PrivateHandler(BaseHandler):
         user_id = str(message.from_user.id)
         username = message.from_user.username or f"user_{user_id}"
         
-        user = User.get_by_id(user_id)
-        if not user:
-            user = User.create(user_id, username, chat_type='private')
-            response = (
-                "👋 Привет! Я помогу тебе отслеживать твои пробежки.\n\n"
-                "Доступные команды:\n"
-                "/run - записать новую пробежку\n"
-                "/stats - посмотреть свою статистику\n"
-                "/rank - узнать свое место в общем рейтинге"
-            )
-        else:
-            response = (
-                "👋 С возвращением!\n\n"
-                "Доступные команды:\n"
-                "/run - записать новую пробежку\n"
-                "/stats - посмотреть свою статистику\n"
-                "/rank - узнать свое место в общем рейтинге"
-            )
-        
-        self.bot.reply_to(message, response)
+        db = SessionLocal()
+        try:
+            user = User.get_by_id(user_id, db=db)
+            if not user:
+                user = User.create(user_id, username, chat_type='private')
+                response = (
+                    "👋 Привет! Я помогу тебе отслеживать твои пробежки.\n\n"
+                    "Доступные команды:\n"
+                    "/run - записать новую пробежку\n"
+                    "/stats - посмотреть свою статистику\n"
+                    "/rank - узнать свое место в общем рейтинге"
+                )
+            else:
+                response = (
+                    "👋 С возвращением!\n\n"
+                    "Доступные команды:\n"
+                    "/run - записать новую пробежку\n"
+                    "/stats - посмотреть свою статистику\n"
+                    "/rank - узнать свое место в общем рейтинге"
+                )
+            
+            self.bot.reply_to(message, response)
+        finally:
+            db.close()
 
     def handle_run(self, message: Message):
         """Обработчик команды /run в личных сообщениях"""
