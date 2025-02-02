@@ -52,17 +52,22 @@ class User(Base):
                 raise
             
             # Сначала проверим прямым SQL запросом
-            sql = text("SELECT * FROM users WHERE user_id = :user_id")
+            sql = text("SELECT user_id, username, yearly_goal, yearly_progress, goal_km, is_active, chat_type FROM users WHERE user_id = :user_id")
             params = {"user_id": normalized_id}
             logger.debug(f"Executing raw SQL: {sql} with params: {params}")
-            raw_result = db.execute(sql, params).fetchone()
+            result = db.execute(sql, params)
+            raw_result = result.first()
             logger.debug(f"Raw SQL result: {raw_result}")
             
             if raw_result:
-                logger.debug(f"Found user with raw SQL: {dict(raw_result)}")
+                # Получаем имена колонок
+                columns = result.keys()
+                # Создаем словарь из результата
+                user_dict = dict(zip(columns, raw_result))
+                logger.debug(f"Found user with raw SQL: {user_dict}")
                 # Создаем объект из результата
                 result = cls()
-                for key, value in dict(raw_result).items():
+                for key, value in user_dict.items():
                     setattr(result, key, value)
                 logger.debug(f"Created user object: {vars(result)}")
                 return result
