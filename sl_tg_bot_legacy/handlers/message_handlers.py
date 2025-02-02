@@ -114,10 +114,23 @@ class MessageHandler(BaseHandler):
             # Создаем сессию для работы с БД
             db = SessionLocal()
             try:
-                # Получаем или создаем пользователя
-                user = User.get_by_id(str(message.from_user.id), db=db)
+                # Логируем информацию о пользователе
+                self.logger.info(f"User info from message: id={message.from_user.id} ({type(message.from_user.id)})")
+                user_id_str = str(message.from_user.id)
+                self.logger.info(f"Converted user_id: {user_id_str} ({type(user_id_str)})")
+                
+                # Пробуем найти пользователя через прямой SQL
+                raw_user = User.find_by_id_raw(user_id_str, db=db)
+                self.logger.info(f"Raw SQL search result: {raw_user}")
+                
+                # Получаем или создаем пользователя через ORM
+                user = User.get_by_id(user_id_str, db=db)
+                self.logger.info(f"get_by_id result: {user}")
+                
                 if not user:
-                    user = User.create(str(message.from_user.id), username, chat_type=message.chat.type)
+                    self.logger.info(f"User not found, creating new with id={user_id_str}, username={username}, chat_type={message.chat.type}")
+                    user = User.create(user_id_str, username, chat_type=message.chat.type, db=db)
+                    self.logger.info(f"Created user: {user}")
                 
                 # Получаем статистику
                 self.logger.info("=== Getting statistics ===")
