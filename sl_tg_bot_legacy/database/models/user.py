@@ -21,6 +21,7 @@ class User(Base):
     def get_by_id(cls, user_id: str, db = None) -> 'User':
         """Получить пользователя по ID"""
         logger.info(f"get_by_id: Looking for user with ID {user_id}")
+        logger.info(f"get_by_id: Type of user_id: {type(user_id)}")
         
         if db is None:
             logger.debug("get_by_id: Creating new database session")
@@ -32,11 +33,11 @@ class User(Base):
             
         try:
             query = db.query(cls).filter(cls.user_id == user_id)
-            logger.debug(f"get_by_id: Executing query: {query}")
+            logger.debug(f"get_by_id: Executing query: {str(query.statement.compile(compile_kwargs={'literal_binds': True}))}")
             user = query.first()
             logger.info(f"get_by_id: Found user: {user is not None}")
             if user:
-                logger.debug(f"get_by_id: User details - username: {user.username}, chat_type: {user.chat_type}")
+                logger.debug(f"get_by_id: User details - username: {user.username}, chat_type: {user.chat_type}, user_id: {user.user_id}, type of user_id: {type(user.user_id)}")
             return user
         finally:
             if should_close:
