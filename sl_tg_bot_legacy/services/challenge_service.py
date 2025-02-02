@@ -1,40 +1,49 @@
 from database.models.challenge import Challenge
-from database.db import get_connection
+from database.models.user import User
+from database.models.running_log import RunningLog
+from database.base import get_db
+from sqlalchemy import func, extract
 from utils.formatters import round_km
 from datetime import datetime, date
+from database.logger import logger
+import traceback
 
 class ChallengeService:
     @staticmethod
     def get_active_challenges():
         """Получение списка активных челленджей"""
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT c.*, COUNT(cp.user_id) as participants
-            FROM challenges c
-            LEFT JOIN challenge_participants cp ON c.challenge_id = cp.challenge_id
-            WHERE c.end_date >= date('now')
-            GROUP BY c.challenge_id
-            ORDER BY c.start_date
-        """)
-        
-        challenges = cursor.fetchall()
-        conn.close()
-        
-        return [
-            {
-                'id': row[0],
-                'title': row[1],
-                'goal_km': round_km(row[2]),
-                'start_date': row[3],
-                'end_date': row[4],
-                'description': row[5],
-                'created_by': row[6],
-                'participants_count': row[7]
-            }
-            for row in challenges
-        ]
+        db = next(get_db())
+        try:
+            current_date = datetime.now().date()
+            
+            # Получаем челленджи с количеством участников
+            challenges = db.query(
+                Challenge,
+                func.count(Challenge.user_id).label('participants_count')
+            ).filter(
+                Challenge.end_date >= current_date
+            ).group_by(
+                Challenge.challenge_id
+            ).order_by(
+                Challenge.start_date
+            ).all()
+            
+            return [{
+                'id': c.Challenge.challenge_id,
+                'title': c.Challenge.title,
+                'goal_km': round_km(c.Challenge.goal_km),
+                'start_date': c.Challenge.start_date,
+                'end_date': c.Challenge.end_date,
+                'description': c.Challenge.description,
+                'created_by': c.Challenge.created_by,
+                'participants_count': c.participants_count
+            } for c in challenges]
+        except Exception as e:
+            logger.error(f"Error getting active challenges: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return []
+        finally:
+            db.close()
 
     @staticmethod
     def create_challenge(title, goal_km, start_date, end_date, description, created_by):
@@ -42,61 +51,80 @@ class ChallengeService:
 
     @staticmethod
     def get_challenge_stats(challenge_id):
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT u.username,
-                   COALESCE(SUM(r.km), 0) as total_km,
-                   COUNT(DISTINCT r.date_added) as active_days
-            FROM challenge_participants cp
-            JOIN users u ON cp.user_id = u.user_id
-            LEFT JOIN running_log r ON u.user_id = r.user_id
-            JOIN challenges c ON cp.challenge_id = c.challenge_id
-            WHERE cp.challenge_id = ?
-            AND r.date_added BETWEEN c.start_date AND c.end_date
-            GROUP BY u.username
-            ORDER BY total_km DESC
-        """, (challenge_id,))
-        
-        results = cursor.fetchall()
-        conn.close()
-        
-        return [
-            {
-                'username': row[0],
-                'total_km': round_km(row[1]),
-                'active_days': row[2]
-            }
-            for row in results
-        ]
+        """Получение статистики по челленджу"""
+        db = next(get_db())
+        try:
+            # Получаем челлендж
+            challenge = db.query(Challenge).filter(
+                Challenge.challenge_id == challenge_id
+            ).first()
+            
+            if not challenge:
+                return []
+            
+            # Получаем статистику участников
+            stats = db.query(
+                User.username,
+                func.sum(RunningLog.km).label('total_km'),
+                func.count(func.distinct(RunningLog.date_added)).label('active_days')
+            ).join(
+                Challenge, Challenge.user_id == User.user_id
+            ).outerjoin(
+                RunningLog, User.user_id == RunningLog.user_id
+            ).filter(
+                Challenge.challenge_id == challenge_id,
+                RunningLog.date_added >= challenge.start_date,
+                RunningLog.date_added <= challenge.end_date
+            ).group_by(
+                User.username
+            ).order_by(
+                func.sum(RunningLog.km).desc()
+            ).all()
+            
+            return [{
+                'username': s.username,
+                'total_km': round_km(s.total_km or 0),
+                'active_days': s.active_days
+            } for s in stats]
+        except Exception as e:
+            logger.error(f"Error getting challenge stats: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return []
+        finally:
+            db.close()
 
     @staticmethod
     def get_user_challenges(user_id):
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT c.*, COALESCE(SUM(r.km), 0) as total_km
-            FROM challenges c
-            JOIN challenge_participants cp ON c.challenge_id = cp.challenge_id
-            LEFT JOIN running_log r ON cp.user_id = r.user_id
-            AND r.date_added BETWEEN c.start_date AND c.end_date
-            WHERE cp.user_id = ?
-            GROUP BY c.challenge_id
-            ORDER BY c.end_date DESC
-        """, (user_id,))
-        
-        challenges = cursor.fetchall()
-        conn.close()
-        
-        return [
-            {
-                'challenge': Challenge(c[0], c[1], c[2], c[3], c[4], c[5], c[6]),
-                'total_km': round_km(c[7])
-            }
-            for c in challenges
-        ]
+        """Получение челленджей пользователя"""
+        db = next(get_db())
+        try:
+            # Получаем челленджи с общим пробегом
+            challenges = db.query(
+                Challenge,
+                func.sum(RunningLog.km).label('total_km')
+            ).outerjoin(
+                RunningLog, 
+                (RunningLog.user_id == Challenge.user_id) & 
+                (RunningLog.date_added >= Challenge.start_date) & 
+                (RunningLog.date_added <= Challenge.end_date)
+            ).filter(
+                Challenge.user_id == user_id
+            ).group_by(
+                Challenge.challenge_id
+            ).order_by(
+                Challenge.end_date.desc()
+            ).all()
+            
+            return [{
+                'challenge': c.Challenge,
+                'total_km': round_km(c.total_km or 0)
+            } for c in challenges]
+        except Exception as e:
+            logger.error(f"Error getting user challenges: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return []
+        finally:
+            db.close()
 
     @staticmethod
     def ensure_yearly_challenge(chat_id, year):
@@ -110,7 +138,7 @@ class ChallengeService:
             start_date = date(year, 1, 1)
             end_date = date(year, 12, 31)
             
-            challenge_id = Challenge.create(
+            challenge = Challenge.create(
                 title=title,
                 goal_km=0,  # Начальная цель
                 start_date=start_date,
@@ -118,8 +146,6 @@ class ChallengeService:
                 chat_id=chat_id,
                 is_system=True
             )
-            
-            challenge = Challenge.get_by_id(challenge_id)
             
         return challenge
 
