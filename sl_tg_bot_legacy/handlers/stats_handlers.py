@@ -200,7 +200,7 @@ class StatsHandler(BaseHandler):
                 self.logger.debug("Using existing database session")
             
             try:
-                # Получаем пользователя
+                # Получаем или создаем пользователя
                 user = User.get_by_id(user_id, db=db)
                 self.logger.debug(f"Found user in database: {user is not None}")
                 
@@ -208,9 +208,7 @@ class StatsHandler(BaseHandler):
                     username = message.from_user.username or message.from_user.first_name
                     chat_type = message.chat.type if message.chat else 'private'
                     self.logger.info(f"Creating new user: {username}, chat_type: {chat_type}")
-                    user = User(user_id=user_id, username=username, chat_type=chat_type)
-                    db.add(user)
-                    db.commit()
+                    user = User.create(user_id, username, chat_type=chat_type, db=db)
                 
                 current_year = datetime.now().year
                 current_month = datetime.now().month

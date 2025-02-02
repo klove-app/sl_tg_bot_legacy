@@ -32,14 +32,28 @@ class User(Base):
                 db.close()
 
     @classmethod
-    def create(cls, user_id: str, username: str, chat_type: str = 'group') -> 'User':
+    def create(cls, user_id: str, username: str, chat_type: str = 'group', db = None) -> 'User':
         """Создать нового пользователя"""
-        db = next(get_db())
-        user = cls(user_id=user_id, username=username, chat_type=chat_type)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return user
+        if db is None:
+            db = next(get_db())
+            should_close = True
+        else:
+            should_close = False
+            
+        try:
+            # Сначала проверяем, не существует ли уже пользователь
+            existing_user = db.query(cls).filter(cls.user_id == user_id).first()
+            if existing_user:
+                return existing_user
+                
+            user = cls(user_id=user_id, username=username, chat_type=chat_type)
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            return user
+        finally:
+            if should_close:
+                db.close()
 
     def save(self):
         """Сохранить изменения пользователя"""
