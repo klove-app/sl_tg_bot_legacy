@@ -3,11 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 from database.logger import logger
-from config.config import DATABASE_NAME, DATABASE_URL
-
-# Получаем путь к базе данных
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), DATABASE_NAME)
-logger.info(f"Database path: {DB_PATH}")
+from config.config import DATABASE_URL
 
 # Создаем URL для подключения к базе данных
 SQLALCHEMY_DATABASE_URL = DATABASE_URL
@@ -15,8 +11,7 @@ logger.info(f"Database URL: {SQLALCHEMY_DATABASE_URL}")
 
 # Создаем движок базы данных
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL
 )
 logger.info("Database engine created")
 

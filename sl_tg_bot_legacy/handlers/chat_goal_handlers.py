@@ -6,6 +6,16 @@ from handlers.base_handler import BaseHandler
 from telebot.apihelper import ApiTelegramException
 import traceback
 from database.db import get_connection
+from database.models.user import User
+from database.models.group_goals import GroupGoals
+from utils.bot_instance import bot
+from utils.message_templates import (
+    CHAT_STATS_TEMPLATE,
+    CHAT_GOAL_PROGRESS_TEMPLATE,
+    CHAT_GOAL_SET_TEMPLATE,
+    CHAT_GOAL_ALREADY_SET_TEMPLATE,
+    CHAT_GOAL_NOT_SET_TEMPLATE
+)
 
 class ChatGoalHandler(BaseHandler):
     def register(self):
@@ -82,13 +92,13 @@ class ChatGoalHandler(BaseHandler):
             
             # Получаем статистику за прошлый год для сравнения
             last_year = year - 1
-            last_year_stats = RunningLog.get_chat_stats_sqlite(chat_id, last_year)
+            last_year_stats = RunningLog.get_chat_stats(chat_id, last_year)
             
             # Получаем статистику за последний месяц
-            current_month_stats = RunningLog.get_chat_stats_sqlite(chat_id, year, month=datetime.now().month)
+            current_month_stats = RunningLog.get_chat_stats(chat_id, year, month=datetime.now().month)
             
             # Получаем топ-3 участников
-            top_runners = RunningLog.get_top_runners_sqlite(chat_id, year, limit=3)
+            top_runners = RunningLog.get_chat_top_users(chat_id, year, limit=3)
             
             # Рассчитываем прогноз достижения цели
             days_passed = (datetime.now() - datetime(year, 1, 1)).days
@@ -130,7 +140,9 @@ class ChatGoalHandler(BaseHandler):
                 response += "🏆 Топ-3 участника:\n"
                 medals = ["🥇", "🥈", "🥉"]
                 for i, runner in enumerate(top_runners):
-                    response += f"{medals[i]} {runner['user_name']}: {runner['total_km']:.2f} км\n"
+                    user = User.get_by_id(runner['user_id'])
+                    username = user.username if user else f"User {runner['user_id']}"
+                    response += f"{medals[i]} {username}: {runner['total_km']:.2f} км\n"
                 response += "\n"
             
             # Средние показатели
@@ -145,7 +157,7 @@ class ChatGoalHandler(BaseHandler):
             if last_year_stats['total_km'] > 0:
                 # Получаем статистику за прошлый год на текущую дату
                 current_date = datetime.now()
-                last_year_progress = RunningLog.get_chat_stats_until_date_sqlite(
+                last_year_progress = RunningLog.get_chat_stats_until_date(
                     chat_id, 
                     last_year, 
                     current_date.month, 
@@ -193,7 +205,7 @@ class ChatGoalHandler(BaseHandler):
             
             # Получаем статистику за прошлый год
             last_year = year - 1
-            last_year_stats = RunningLog.get_chat_stats_sqlite(chat_id, last_year)
+            last_year_stats = RunningLog.get_chat_stats(chat_id, last_year)
             
             markup = InlineKeyboardMarkup()
             
@@ -544,3 +556,131 @@ def register_handlers(bot):
     """Регистрирует обработчики целей чата"""
     handler = ChatGoalHandler(bot)
     handler.register() 
+
+def handle_chat_stats(message: Message):
+    """Обработчик команды /chat_stats - показывает статистику чата"""
+    chat_id = str(message.chat.id)
+    year = datetime.now().year
+    last_year = year - 1
+
+    try:
+        # Получаем статистику за прошлый год
+        last_year_stats = RunningLog.get_chat_stats(chat_id, last_year)
+        
+        # Получаем статистику за текущий месяц
+        current_month_stats = RunningLog.get_chat_stats(chat_id, year, month=datetime.now().month)
+        
+        # Получаем топ бегунов
+        top_runners = RunningLog.get_chat_top_users(chat_id, year, limit=3)
+        
+        # Форматируем сообщение
+        message_text = CHAT_STATS_TEMPLATE.format(
+            year=year,
+            total_km=current_month_stats['total_km'],
+            runs_count=current_month_stats['runs_count'],
+            users_count=current_month_stats['users_count'],
+            last_year_km=last_year_stats['total_km']
+        )
+        
+        # Добавляем информацию о топ бегунах
+        if top_runners:
+            message_text += "\n\nТоп бегунов этого года:\n"
+            for i, runner in enumerate(top_runners, 1):
+                user = User.get_by_id(runner['user_id'])
+                username = user.username if user else f"User {runner['user_id']}"
+                message_text += f"{i}. {username}: {runner['total_km']:.1f} км ({runner['runs_count']} пробежек)\n"
+        
+        bot.reply_to(message, message_text)
+        
+    except Exception as e:
+        bot.reply_to(message, f"Ошибка при получении статистики: {e}")
+
+def handle_chat_goal(message: Message):
+    """Обработчик команды /chat_goal - показывает прогресс по цели чата"""
+    chat_id = str(message.chat.id)
+    year = datetime.now().year
+    
+    try:
+        # Получаем цель на текущий год
+        goal = GroupGoals.get_goal(year)
+        
+        if not goal:
+            bot.reply_to(message, CHAT_GOAL_NOT_SET_TEMPLATE.format(year=year))
+            return
+        
+        # Получаем прогресс за текущий год
+        current_progress = RunningLog.get_chat_stats(chat_id, year)
+        
+        # Получаем прогресс за прошлый год на эту же дату
+        last_year = year - 1
+        last_year_progress = RunningLog.get_chat_stats_until_date(
+            chat_id,
+            last_year,
+            datetime.now().month,
+            datetime.now().day
+        )
+        
+        # Вычисляем процент выполнения
+        progress_percent = (current_progress['total_km'] / goal.total_goal) * 100 if goal.total_goal > 0 else 0
+        
+        message_text = CHAT_GOAL_PROGRESS_TEMPLATE.format(
+            year=year,
+            current_km=current_progress['total_km'],
+            goal_km=goal.total_goal,
+            progress_percent=progress_percent,
+            last_year_km=last_year_progress['total_km']
+        )
+        
+        bot.reply_to(message, message_text)
+        
+    except Exception as e:
+        bot.reply_to(message, f"Ошибка при получении прогресса: {e}")
+
+def handle_set_chat_goal(message: Message):
+    """Обработчик команды /set_chat_goal - устанавливает цель для чата"""
+    try:
+        # Проверяем формат сообщения
+        parts = message.text.split()
+        if len(parts) != 2:
+            bot.reply_to(message, "Используйте формат: /set_chat_goal <количество_км>")
+            return
+        
+        # Парсим значение цели
+        try:
+            goal_km = float(parts[1].replace(',', '.'))
+        except ValueError:
+            bot.reply_to(message, "Некорректное значение. Используйте число.")
+            return
+            
+        year = datetime.now().year
+        
+        # Проверяем, не установлена ли уже цель
+        existing_goal = GroupGoals.get_goal(year)
+        if existing_goal:
+            bot.reply_to(
+                message,
+                CHAT_GOAL_ALREADY_SET_TEMPLATE.format(
+                    year=year,
+                    current_goal=existing_goal.total_goal
+                )
+            )
+            return
+        
+        # Получаем статистику за прошлый год для сравнения
+        last_year = year - 1
+        last_year_stats = RunningLog.get_chat_stats(str(message.chat.id), last_year)
+        
+        # Создаем новую цель
+        GroupGoals.create_goal(year, goal_km)
+        
+        bot.reply_to(
+            message,
+            CHAT_GOAL_SET_TEMPLATE.format(
+                year=year,
+                goal_km=goal_km,
+                last_year_km=last_year_stats['total_km']
+            )
+        )
+        
+    except Exception as e:
+        bot.reply_to(message, f"Ошибка при установке цели: {e}") 
