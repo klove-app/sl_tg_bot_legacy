@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Boolean, REAL, Text
+from sqlalchemy import Column, String, Float, Boolean, REAL, Text, text
 from sqlalchemy.orm import Session, relationship
 from database.base import Base, get_db
 from database.logger import logger
@@ -45,14 +45,14 @@ class User(Base):
             
             # Проверяем соединение с базой
             try:
-                db.execute("SELECT 1")
+                db.execute(text("SELECT 1"))
                 logger.debug("Database connection is alive")
             except Exception as e:
                 logger.error(f"Database connection error: {e}")
                 raise
             
             # Сначала проверим прямым SQL запросом
-            sql = "SELECT * FROM users WHERE user_id = :user_id"
+            sql = text("SELECT * FROM users WHERE user_id = :user_id")
             params = {"user_id": normalized_id}
             logger.debug(f"Executing raw SQL: {sql} with params: {params}")
             raw_result = db.execute(sql, params).fetchone()
@@ -145,7 +145,7 @@ class User(Base):
             
             # Проверяем соединение с базой
             try:
-                db.execute("SELECT 1")
+                db.execute(text("SELECT 1"))
                 logger.debug("create: Database connection is alive")
             except Exception as e:
                 logger.error(f"create: Database connection error: {e}")
@@ -213,11 +213,11 @@ class User(Base):
             logger.debug(f"Searching for user with normalized_id='{normalized_id}'")
             
             # Прямой SQL запрос
-            sql = """
+            sql = text("""
             SELECT user_id, username, yearly_goal, yearly_progress, goal_km, is_active, chat_type
             FROM users 
             WHERE user_id = :user_id
-            """
+            """)
             result = db.execute(sql, {"user_id": normalized_id}).fetchone()
             logger.debug(f"Raw SQL search result: {result}")
             
