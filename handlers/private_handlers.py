@@ -74,7 +74,9 @@ class PrivateHandler(BaseHandler):
     def process_run_distance(self, message: Message):
         """Обработка введенной дистанции пробежки"""
         try:
-            km = float(message.text.strip())
+            # Заменяем запятую на точку и удаляем пробелы
+            text = message.text.strip().replace(',', '.')
+            km = float(text)
             
             if km > 100:
                 self.bot.reply_to(message, "❌ Максимальная дистанция - 100 км")
@@ -100,7 +102,7 @@ class PrivateHandler(BaseHandler):
         except ValueError:
             self.bot.reply_to(
                 message,
-                "❌ Пожалуйста, введите корректное число (например: 5.2)"
+                "❌ Пожалуйста, введите корректное число (например: 5.2 или 5,2)"
             )
 
     def handle_stats(self, message: Message):

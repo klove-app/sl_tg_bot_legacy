@@ -962,7 +962,7 @@ class StatsHandler(BaseHandler):
                 response = (
                     "🏃‍♂️ <b>Новая пробежка</b>\n\n"
                     "Выберите дистанцию или отправьте сообщением:\n"
-                    "• Просто километраж (например: 5.2)\n"
+                    "• Просто километраж (например: 5.2 или 5,2)\n"
                     "• Километраж и заметку (5.2 Утренняя)\n"
                     "• Фото с подписью, содержащей километраж"
                 )
@@ -974,9 +974,10 @@ class StatsHandler(BaseHandler):
                     reply_markup=markup,
                     parse_mode='HTML'
                 )
-                
             elif call.data.startswith('quick_run_'):
-                km = float(call.data.split('_')[2])
+                # Заменяем запятую на точку в значении из callback_data
+                km_str = call.data.split('_')[2].replace(',', '.')
+                km = float(km_str)
                 user_id = str(call.from_user.id)
                 chat_id = str(call.message.chat.id) if call.message.chat.type != 'private' else None
                 chat_type = call.message.chat.type if call.message.chat else 'private'

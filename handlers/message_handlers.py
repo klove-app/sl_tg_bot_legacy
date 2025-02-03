@@ -79,10 +79,12 @@ class MessageHandler(BaseHandler):
             text = message.text
             if self.bot.get_me().username:
                 text = text.replace(f"@{self.bot.get_me().username}", "").strip()
-            self.logger.info(f"Cleaned text: {text}")
+            self.logger.info(f"Cleaned text for processing: '{text}'")
             
             # Ищем первое число в тексте
             number_match = re.search(r'(\d+[.,]?\d*)', text)
+            self.logger.info(f"Regex search result: {number_match}")
+            
             if not number_match:
                 self.logger.info("No distance found in message")
                 if message.chat.type == 'private':
@@ -90,15 +92,33 @@ class MessageHandler(BaseHandler):
                         message,
                         "⚠️ *Не могу найти количество километров*\n\n"
                         "Отправьте сообщение в формате:\n"
-                        "• `5.2` - просто километраж\n"
+                        "• `5.2` или `5,2` - просто километраж\n"
                         "• `5.2 Утренняя пробежка` - с описанием",
                         parse_mode='Markdown'
                     )
                 return
                 
             # Преобразуем найденное число в float
-            km = float(number_match.group(1).replace(',', '.'))
-            self.logger.info(f"Extracted distance: {km} km")
+            number_str = number_match.group(1)
+            self.logger.info(f"Found number string: '{number_str}'")
+            
+            # Заменяем запятую на точку
+            number_str = number_str.replace(',', '.')
+            self.logger.info(f"After comma replacement: '{number_str}'")
+            
+            try:
+                km = float(number_str)
+                self.logger.info(f"Successfully converted to float: {km}")
+            except ValueError as e:
+                self.logger.error(f"Error converting to float: {e}")
+                self.bot.reply_to(
+                    message,
+                    "⚠️ *Ошибка в формате числа*\n\n"
+                    "Используйте точку или запятую для разделения\n"
+                    "Примеры: `5.2` или `5,2`",
+                    parse_mode='Markdown'
+                )
+                return
             
             # Проверяем максимальную дистанцию
             if km > 100:
@@ -268,7 +288,8 @@ class MessageHandler(BaseHandler):
                 self.bot.reply_to(
                     message,
                     "⚠️ *Некорректная дистанция*\n\n"
-                    "Пожалуйста, укажите положительное число километров",
+                    "Пожалуйста, укажите положительное число километров\n"
+                    "Например: `5.2` или `5,2`",
                     parse_mode='Markdown'
                 )
                 return
