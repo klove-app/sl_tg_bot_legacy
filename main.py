@@ -323,6 +323,12 @@ if __name__ == "__main__":
         logger.info("Deleting webhook to avoid conflict with polling...")
         bot.delete_webhook()
         logger.info("Webhook deleted successfully")
+        
+        # Дополнительная пауза для завершения предыдущих соединений
+        import time
+        time.sleep(2)
+        logger.info("Waiting for previous connections to close...")
+        
     except Exception as e:
         logger.warning(f"Failed to delete webhook: {e}")
     
@@ -350,14 +356,41 @@ if __name__ == "__main__":
     logger.info("Bot is running...")
     
     # Запускаем бота с улучшенной обработкой ошибок
-    try:
-        bot.infinity_polling(
-            timeout=20, 
-            long_polling_timeout=20,
-            allowed_updates=["message", "edited_message", "callback_query"],
-            skip_pending=True  # Пропускаем старые сообщения при запуске
-        )
-    except Exception as e:
-        logger.error(f"Critical error in bot polling: {e}")
-        logger.error(traceback.format_exc())
-        raise
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            logger.info(f"Starting bot polling (attempt {retry_count + 1}/{max_retries})...")
+            bot.infinity_polling(
+                timeout=20, 
+                long_polling_timeout=20,
+                allowed_updates=["message", "edited_message", "callback_query"],
+                skip_pending=True  # Пропускаем старые сообщения при запуске
+            )
+            break  # Если polling запустился успешно, выходим из цикла
+            
+        except Exception as e:
+            retry_count += 1
+            logger.error(f"Error in bot polling (attempt {retry_count}/{max_retries}): {e}")
+            
+            if "terminated by other getUpdates request" in str(e):
+                logger.warning("Another bot instance detected. Waiting before retry...")
+                import time
+                time.sleep(5)  # Ждем 5 секунд перед повторной попыткой
+                
+                # Пытаемся снова удалить webhook
+                try:
+                    bot.delete_webhook()
+                    time.sleep(2)
+                except:
+                    pass
+                    
+            elif retry_count >= max_retries:
+                logger.error("Max retries reached. Bot startup failed.")
+                logger.error(traceback.format_exc())
+                raise
+            else:
+                logger.info(f"Retrying in 3 seconds...")
+                import time
+                time.sleep(3)
