@@ -42,15 +42,27 @@ def update_existing_runs_chat_type():
     cursor = conn.cursor()
     
     try:
-        # Обновляем chat_type для всех записей
-        cursor.execute("""
-            UPDATE running_log 
-            SET chat_type = CASE
-                WHEN chat_id IS NULL THEN 'private'
-                ELSE 'group'
-            END
-            WHERE chat_type IS NULL
-        """)
+        # Сначала проверяем, есть ли колонка chat_id
+        cursor.execute("PRAGMA table_info(running_log)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'chat_id' in columns:
+            # Обновляем chat_type для всех записей, используя chat_id
+            cursor.execute("""
+                UPDATE running_log 
+                SET chat_type = CASE
+                    WHEN chat_id IS NULL THEN 'private'
+                    ELSE 'group'
+                END
+                WHERE chat_type IS NULL
+            """)
+        else:
+            # Если chat_id нет, просто устанавливаем 'group' по умолчанию
+            cursor.execute("""
+                UPDATE running_log 
+                SET chat_type = 'group'
+                WHERE chat_type IS NULL
+            """)
         
         affected_rows = cursor.rowcount
         conn.commit()
@@ -68,9 +80,14 @@ def add_missing_columns():
     cursor = conn.cursor()
     
     try:
-        # Проверяем наличие колонки chat_type в таблице running_log
+        # Проверяем наличие колонок в таблице running_log
         cursor.execute("PRAGMA table_info(running_log)")
         columns = [column[1] for column in cursor.fetchall()]
+        
+        # Добавляем колонку chat_id в running_log, если её нет
+        if 'chat_id' not in columns:
+            cursor.execute('ALTER TABLE running_log ADD COLUMN chat_id TEXT')
+            logger.info("Добавлена колонка chat_id в таблицу running_log")
         
         # Добавляем колонку chat_type в running_log, если её нет
         if 'chat_type' not in columns:
