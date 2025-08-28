@@ -179,11 +179,11 @@ class MessageHandler(BaseHandler):
             else:
                 response += "\n\n👍 Так держать!"
             
-            # Генерируем изображение для любой дистанции
+            # Пытаемся сгенерировать изображение для любой дистанции
             self.logger.info("=== Starting image generation ===")
             self.logger.info(f"Parameters: km={km}, username={username}, date={date}")
-            self.logger.info("Attempting to generate image...")
             
+            image_sent = False
             try:
                 self.logger.info("Before calling generate_achievement_image")
                 self.logger.info(f"API settings: host={cfg.STABILITY_API_HOST}, key={'present' if cfg.STABILITY_API_KEY else 'missing'}")
@@ -202,14 +202,26 @@ class MessageHandler(BaseHandler):
                         reply_to_message_id=message.message_id
                     )
                     self.logger.info("Photo sent successfully")
+                    image_sent = True
                 else:
-                    self.logger.error("Image data is None")
-                    self.bot.reply_to(message, response, parse_mode='Markdown')
+                    self.logger.info("Image data is None, sending text response")
             except Exception as e:
                 self.logger.error(f"Error in image generation/sending: {str(e)}")
                 self.logger.error("Full error:")
                 self.logger.error(traceback.format_exc())
-                self.bot.reply_to(message, response, parse_mode='Markdown')
+            
+            # Если изображение не было отправлено, отправляем текстовое сообщение
+            if not image_sent:
+                try:
+                    self.bot.reply_to(message, response, parse_mode='Markdown')
+                    self.logger.info("Text response sent successfully")
+                except Exception as e:
+                    self.logger.error(f"Error sending text response: {e}")
+                    # Последняя попытка - отправить простое сообщение без markdown
+                    try:
+                        self.bot.reply_to(message, "✅ Пробежка записана!")
+                    except Exception as final_e:
+                        self.logger.error(f"Failed to send any response: {final_e}")
             
             # Сохраняем запись о пробежке после отправки сообщения
             self.logger.info("=== Saving run entry ===")
@@ -357,10 +369,11 @@ class MessageHandler(BaseHandler):
             else:
                 response += "\n\n👍 Так держать!"
             
-            # Добавляем водяные знаки на фото пользователя
+            # Пытаемся добавить водяные знаки на фото пользователя
             self.logger.info("=== Adding watermark to user's photo ===")
             self.logger.info(f"Parameters: km={km}, username={username}, date={date}")
             
+            image_sent = False
             try:
                 # Получаем фото в максимальном размере
                 file_info = self.bot.get_file(message.photo[-1].file_id)
@@ -391,14 +404,26 @@ class MessageHandler(BaseHandler):
                         reply_to_message_id=message.message_id
                     )
                     self.logger.info("Photo sent successfully")
+                    image_sent = True
                 else:
-                    self.logger.error("Image data is None")
-                    self.bot.reply_to(message, response, parse_mode='Markdown')
+                    self.logger.info("Image data is None, sending text response")
             except Exception as e:
                 self.logger.error(f"Error in image processing/sending: {str(e)}")
                 self.logger.error("Full error:")
                 self.logger.error(traceback.format_exc())
-                self.bot.reply_to(message, response, parse_mode='Markdown')
+            
+            # Если изображение не было отправлено, отправляем текстовое сообщение
+            if not image_sent:
+                try:
+                    self.bot.reply_to(message, response, parse_mode='Markdown')
+                    self.logger.info("Text response sent successfully")
+                except Exception as e:
+                    self.logger.error(f"Error sending text response: {e}")
+                    # Последняя попытка - отправить простое сообщение без markdown
+                    try:
+                        self.bot.reply_to(message, "✅ Пробежка с фото записана!")
+                    except Exception as final_e:
+                        self.logger.error(f"Failed to send any response: {final_e}")
             
             # Сохраняем запись о пробежке после отправки сообщения
             if RunningLog.add_entry(

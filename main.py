@@ -131,6 +131,11 @@ def generate_achievement_image(distance, username, date):
         logger.info(f"- username: {username}")
         logger.info(f"- date: {date}")
         
+        # Проверяем наличие API ключа
+        if not cfg.STABILITY_API_KEY or cfg.STABILITY_API_KEY == 'your_api_key_here':
+            logger.warning("Stability AI API key not configured, skipping image generation")
+            return None
+        
         # Генерируем промпт
         prompt = PromptGenerator.generate_prompt(distance)
         logger.info(f"Generated prompt: {prompt}")
@@ -156,11 +161,21 @@ def generate_achievement_image(distance, username, date):
         logger.info("Payload prepared")
         
         logger.info("Sending request to Stability AI")
-        response = requests.post(url, headers=headers, json=payload)
+        # Добавляем timeout для избежания зависания
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
         logger.info(f"Got response with status code: {response.status_code}")
         
-        if response.status_code != 200:
-            logger.error(f"Non-200 response: {response.text}")
+        if response.status_code == 401:
+            logger.error("Stability AI API: Unauthorized - check API key")
+            return None
+        elif response.status_code == 402:
+            logger.error("Stability AI API: Payment required - check account balance")
+            return None
+        elif response.status_code == 429:
+            logger.error("Stability AI API: Rate limit exceeded")
+            return None
+        elif response.status_code != 200:
+            logger.error(f"Stability AI API error {response.status_code}: {response.text}")
             return None
             
         response_json = response.json()
@@ -187,6 +202,12 @@ def generate_achievement_image(distance, username, date):
         
         return watermarked_image
         
+    except requests.exceptions.Timeout:
+        logger.error("Stability AI API request timeout")
+        return None
+    except requests.exceptions.ConnectionError:
+        logger.error("Stability AI API connection error")
+        return None
     except Exception as e:
         logger.error(f"Error generating image: {e}")
         logger.error(traceback.format_exc())
@@ -295,6 +316,14 @@ if __name__ == "__main__":
     # Создаем таблицы в базе данных
     Base.metadata.create_all(engine)
     
+    # Удаляем webhook перед запуском polling (исправление конфликта 409)
+    try:
+        logger.info("Deleting webhook to avoid conflict with polling...")
+        bot.delete_webhook()
+        logger.info("Webhook deleted successfully")
+    except Exception as e:
+        logger.warning(f"Failed to delete webhook: {e}")
+    
     # Регистрируем обработчики
     register_chat_handlers(bot)
     register_challenge_handlers(bot)
@@ -318,5 +347,15 @@ if __name__ == "__main__":
     logger.info("Bot handlers registered")
     logger.info("Bot is running...")
     
-    # Запускаем бота
-    bot.infinity_polling()
+    # Запускаем бота с улучшенной обработкой ошибок
+    try:
+        bot.infinity_polling(
+            timeout=20, 
+            long_polling_timeout=20,
+            allowed_updates=["message", "edited_message", "callback_query"],
+            skip_pending=True  # Пропускаем старые сообщения при запуске
+        )
+    except Exception as e:
+        logger.error(f"Critical error in bot polling: {e}")
+        logger.error(traceback.format_exc())
+        raise
