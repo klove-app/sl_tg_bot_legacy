@@ -196,8 +196,8 @@ def generate_achievement_image(distance, username, date):
         watermarked_image = add_watermark(
             image_data,
             f"{username} • {date}",  # Информация о пробежке
-            "Бег: свои люди",        # Название чата
-            f"{distance:.2f} км",    # Километраж
+            "Running Club",          # Название чата
+            f"{distance:.2f} km",    # Километраж на английском
             distance                 # Для позиционирования
         )
         logger.info("Watermark added")
@@ -289,13 +289,13 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         # === СТИЛЬНЫЙ ДИЗАЙН В СТИЛЕ STRAVA/INSTAGRAM ===
         
         # Создаем градиентный фон для нижней панели (как в Strava)
-        panel_height = 120
+        panel_height = 100  # Уменьшаем высоту панели
         gradient_overlay = Image.new('RGBA', (width, panel_height), (0, 0, 0, 0))
         gradient_draw = ImageDraw.Draw(gradient_overlay)
         
         # Создаем градиент от прозрачного к черному
         for y in range(panel_height):
-            alpha = int((y / panel_height) * 180)  # Постепенное увеличение прозрачности
+            alpha = int((y / panel_height) * 160)  # Немного уменьшаем прозрачность
             gradient_draw.rectangle([(0, y), (width, y + 1)], fill=(0, 0, 0, alpha))
         
         # Накладываем градиент снизу
@@ -310,12 +310,12 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         brand_height = brand_bbox[3] - brand_bbox[1]
         
         # Полупрозрачная рамка с закругленными краями (имитация)
-        logo_padding = 15
-        logo_bg = Image.new('RGBA', (brand_width + logo_padding * 2, brand_height + logo_padding * 2), (0, 0, 0, 120))
+        logo_padding = 12  # Уменьшаем отступы
+        logo_bg = Image.new('RGBA', (brand_width + logo_padding * 2, brand_height + logo_padding * 2), (0, 0, 0, 140))
         
         # Размещаем логотип в правом верхнем углу
-        logo_x = width - brand_width - logo_padding * 2 - 20
-        logo_y = 20
+        logo_x = width - brand_width - logo_padding * 2 - 15  # Ближе к краю
+        logo_y = 15  # Ближе к верху
         image.paste(logo_bg, (logo_x, logo_y), logo_bg)
         draw.text((logo_x + logo_padding, logo_y + logo_padding), brand_text, font=font_small, fill='white')
         
@@ -328,7 +328,7 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         
         # Размещаем километраж по центру внизу
         distance_x = (width - distance_width) // 2
-        distance_y = height - 80
+        distance_y = height - 70  # Поднимаем выше
         
         # Добавляем тень для лучшей читаемости
         shadow_offset = 2
@@ -340,7 +340,7 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         label_bbox = draw.textbbox((0, 0), label_text, font=font_small)
         label_width = label_bbox[2] - label_bbox[0]
         label_x = (width - label_width) // 2
-        label_y = distance_y + 50
+        label_y = distance_y + 40  # Ближе к километражу
         
         draw.text((label_x + 1, label_y + 1), label_text, font=font_small, fill=(0, 0, 0, 150))  # Тень
         draw.text((label_x, label_y), label_text, font=font_small, fill=(200, 200, 200))  # Серый текст
@@ -349,23 +349,25 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         
         # Имя пользователя и дата слева внизу
         user_info = f"@{info_text.split(' • ')[0]} • {info_text.split(' • ')[1]}"
-        draw.text((21, height - 30), user_info, font=font_small, fill=(0, 0, 0, 150))  # Тень
-        draw.text((20, height - 31), user_info, font=font_small, fill='white')
+        draw.text((16, height - 20), user_info, font=font_small, fill=(0, 0, 0, 150))  # Тень
+        draw.text((15, height - 21), user_info, font=font_small, fill='white')
         
         # Мотивационная фраза справа внизу (как в Strava)
-        if distance_x >= 10:
+        # Используем distance_x для проверки дистанции (это правильная переменная)
+        actual_distance = float(distance_text.replace(' км', '').replace(' km', ''))
+        if actual_distance >= 10:
             motivation = "💪 AWESOME!"
-        elif distance_x >= 5:
+        elif actual_distance >= 5:
             motivation = "🔥 GREAT JOB!"
         else:
             motivation = "👍 KEEP GOING!"
             
         motivation_bbox = draw.textbbox((0, 0), motivation, font=font_small)
         motivation_width = motivation_bbox[2] - motivation_bbox[0]
-        motivation_x = width - motivation_width - 20
+        motivation_x = width - motivation_width - 15
         
-        draw.text((motivation_x + 1, height - 30), motivation, font=font_small, fill=(0, 0, 0, 150))  # Тень
-        draw.text((motivation_x, height - 31), motivation, font=font_small, fill=(255, 165, 0))  # Оранжевый как в Strava
+        draw.text((motivation_x + 1, height - 20), motivation, font=font_small, fill=(0, 0, 0, 150))  # Тень
+        draw.text((motivation_x, height - 21), motivation, font=font_small, fill=(255, 165, 0))  # Оранжевый как в Strava
         
         # Сохраняем изображение
         output = BytesIO()
