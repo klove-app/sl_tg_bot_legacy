@@ -226,19 +226,21 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         
         # Пытаемся загрузить шрифты
         font_paths = [
+            # Linux fonts (Railway)
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/ubuntu/Ubuntu-Bold.ttf",
+            "/usr/share/fonts/truetype/ubuntu/Ubuntu-Regular.ttf",
             # Windows fonts
-            "C:\\Windows\\Fonts\\arialbd.ttf",  # Arial Bold
-            "C:\\Windows\\Fonts\\arial.ttf",    # Arial Regular
-            "C:\\Windows\\Fonts\\calibrib.ttf", # Calibri Bold
-            "C:\\Windows\\Fonts\\calibri.ttf",  # Calibri Regular
-            "C:\\Windows\\Fonts\\segoeui.ttf",  # Segoe UI
-            "C:\\Windows\\Fonts\\consola.ttf",  # Consolas Regular
+            "C:\\Windows\\Fonts\\arialbd.ttf",
+            "C:\\Windows\\Fonts\\arial.ttf",
             # macOS fonts
-            "/System/Library/Fonts/SFNS.ttf",           # San Francisco
-            "/System/Library/Fonts/Helvetica.ttc",      # Helvetica
-            "/System/Library/Fonts/HelveticaNeue.ttc",  # Helvetica Neue
-            "/Library/Fonts/Arial.ttf",                 # Arial
-            "/Library/Fonts/Arial Bold.ttf",            # Arial Bold
+            "/System/Library/Fonts/Helvetica.ttc",
+            "/Library/Fonts/Arial.ttf",
         ]
         
         found_fonts = []
@@ -250,21 +252,35 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
             except Exception as e:
                 logger.error(f"Ошибка при проверке шрифта {font_path}: {e}")
         
-        if not found_fonts:
-            logger.error("Не найдено ни одного шрифта!")
-            return None
-            
-        # Используем первый найденный шрифт
-        font_path = found_fonts[0]
-        logger.info(f"Используем шрифт: {font_path}")
+        # Пытаемся загрузить шрифты
+        font_large = None
+        font_medium = None
+        font_brand = None
         
-        try:
-            font_large = ImageFont.truetype(font_path, 60)  # Для километража
-            font_medium = ImageFont.truetype(font_path, 30)  # Для имени и даты
-            font_brand = ImageFont.truetype(font_path, 50)   # Для названия чата
-        except Exception as e:
-            logger.error(f"Ошибка при загрузке шрифтов: {e}")
-            return None
+        if found_fonts:
+            # Используем первый найденный шрифт
+            font_path = found_fonts[0]
+            logger.info(f"Используем шрифт: {font_path}")
+            
+            try:
+                font_large = ImageFont.truetype(font_path, 60)  # Для километража
+                font_medium = ImageFont.truetype(font_path, 30)  # Для имени и даты
+                font_brand = ImageFont.truetype(font_path, 50)   # Для названия чата
+                logger.info("Шрифты успешно загружены")
+            except Exception as e:
+                logger.error(f"Ошибка при загрузке шрифтов: {e}")
+        
+        # Fallback на стандартный шрифт PIL
+        if not font_large:
+            logger.warning("Используем стандартный шрифт PIL")
+            try:
+                font_large = ImageFont.load_default()
+                font_medium = ImageFont.load_default()
+                font_brand = ImageFont.load_default()
+                logger.info("Стандартный шрифт загружен")
+            except Exception as e:
+                logger.error(f"Ошибка при загрузке стандартного шрифта: {e}")
+                return None
             
         # Размеры изображения
         width, height = image.size
