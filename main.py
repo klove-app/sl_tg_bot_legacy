@@ -156,6 +156,8 @@ def generate_achievement_image(distance, username, date):
             "cfg_scale": 7,
             "samples": 1,
             "steps": 30,
+            "width": 1024,  # Исправляем размеры для SDXL
+            "height": 1024,
             "style_preset": "anime"
         }
         logger.info("Payload prepared")
