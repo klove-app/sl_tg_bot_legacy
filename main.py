@@ -263,22 +263,24 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
             logger.info(f"Используем шрифт: {font_path}")
             
             try:
-                # Значительно увеличиваем размеры шрифтов для изображения 1024x1024
-                font_large = ImageFont.truetype(font_path, 120)  # Для главного километража (было 80)
-                font_medium = ImageFont.truetype(font_path, 48)  # Для подписей и информации (было 36)
-                font_small = ImageFont.truetype(font_path, 36)   # Для мелкого текста (было 28)
-                logger.info("Шрифты успешно загружены")
+                # КАРДИНАЛЬНО увеличиваем размеры шрифтов для изображения 1024x1024
+                font_large = ImageFont.truetype(font_path, 200)  # Для главного километража (было 120)
+                font_medium = ImageFont.truetype(font_path, 80)  # Для подписей и информации (было 48)
+                font_small = ImageFont.truetype(font_path, 60)   # Для мелкого текста (было 36)
+                logger.info("Шрифты успешно загружены с большими размерами")
             except Exception as e:
                 logger.error(f"Ошибка при загрузке шрифтов: {e}")
         
         # Fallback на стандартный шрифт PIL
         if not font_large:
-            logger.warning("Используем стандартный шрифт PIL")
+            logger.warning("Используем стандартный шрифт PIL - попробуем увеличить размер")
             try:
-                font_large = ImageFont.load_default()
-                font_medium = ImageFont.load_default()
-                font_small = ImageFont.load_default()
-                logger.info("Стандартный шрифт загружен")
+                # Попробуем создать большие шрифты даже со стандартным шрифтом
+                default_font = ImageFont.load_default()
+                font_large = default_font
+                font_medium = default_font  
+                font_small = default_font
+                logger.info("Стандартный шрифт загружен (размеры могут быть ограничены)")
             except Exception as e:
                 logger.error(f"Ошибка при загрузке стандартного шрифта: {e}")
                 return None
@@ -289,7 +291,7 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         # === СТИЛЬНЫЙ ДИЗАЙН В СТИЛЕ STRAVA/INSTAGRAM ===
         
         # Создаем градиентный фон для нижней панели (как в Strava)
-        panel_height = 180  # Увеличиваем высоту панели для больших шрифтов
+        panel_height = 300  # КАРДИНАЛЬНО увеличиваем высоту панели для огромных шрифтов
         gradient_overlay = Image.new('RGBA', (width, panel_height), (0, 0, 0, 0))
         gradient_draw = ImageDraw.Draw(gradient_overlay)
         
@@ -310,12 +312,12 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         brand_height = brand_bbox[3] - brand_bbox[1]
         
         # Полупрозрачная рамка с закругленными краями (имитация)
-        logo_padding = 20  # Увеличиваем отступы для больших шрифтов
+        logo_padding = 30  # КАРДИНАЛЬНО увеличиваем отступы для огромных шрифтов
         logo_bg = Image.new('RGBA', (brand_width + logo_padding * 2, brand_height + logo_padding * 2), (0, 0, 0, 140))
         
         # Размещаем логотип в правом верхнем углу
-        logo_x = width - brand_width - logo_padding * 2 - 25  # Больше отступ от края
-        logo_y = 25  # Больше отступ от верха
+        logo_x = width - brand_width - logo_padding * 2 - 40  # Больше отступ от края
+        logo_y = 40  # Больше отступ от верха
         image.paste(logo_bg, (logo_x, logo_y), logo_bg)
         draw.text((logo_x + logo_padding, logo_y + logo_padding), brand_text, font=font_small, fill='white')
         
@@ -328,10 +330,10 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         
         # Размещаем километраж по центру внизу
         distance_x = (width - distance_width) // 2
-        distance_y = height - 120  # Опускаем ниже для большей панели
+        distance_y = height - 220  # КАРДИНАЛЬНО опускаем ниже для огромной панели
         
         # Добавляем тень для лучшей читаемости
-        shadow_offset = 3  # Увеличиваем тень для больших шрифтов
+        shadow_offset = 5  # КАРДИНАЛЬНО увеличиваем тень для огромных шрифтов
         draw.text((distance_x + shadow_offset, distance_y + shadow_offset), main_distance, font=font_large, fill=(0, 0, 0, 150))
         draw.text((distance_x, distance_y), main_distance, font=font_large, fill='white')
         
@@ -340,17 +342,17 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         label_bbox = draw.textbbox((0, 0), label_text, font=font_medium)  # Используем medium вместо small
         label_width = label_bbox[2] - label_bbox[0]
         label_x = (width - label_width) // 2
-        label_y = distance_y + 60  # Больше отступ для больших шрифтов
+        label_y = distance_y + 100  # КАРДИНАЛЬНО больше отступ для огромных шрифтов
         
-        draw.text((label_x + 2, label_y + 2), label_text, font=font_medium, fill=(0, 0, 0, 150))  # Тень
+        draw.text((label_x + 3, label_y + 3), label_text, font=font_medium, fill=(0, 0, 0, 150))  # Тень
         draw.text((label_x, label_y), label_text, font=font_medium, fill=(200, 200, 200))  # Серый текст
         
         # === ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ ===
         
         # Имя пользователя и дата слева внизу
         user_info = f"@{info_text.split(' • ')[0]} • {info_text.split(' • ')[1]}"
-        draw.text((27, height - 35), user_info, font=font_small, fill=(0, 0, 0, 150))  # Тень
-        draw.text((25, height - 37), user_info, font=font_small, fill='white')
+        draw.text((43, height - 60), user_info, font=font_small, fill=(0, 0, 0, 150))  # Тень
+        draw.text((40, height - 63), user_info, font=font_small, fill='white')
         
         # Мотивационная фраза справа внизу (как в Strava)
         # Используем distance_x для проверки дистанции (это правильная переменная)
@@ -364,10 +366,10 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
             
         motivation_bbox = draw.textbbox((0, 0), motivation, font=font_small)
         motivation_width = motivation_bbox[2] - motivation_bbox[0]
-        motivation_x = width - motivation_width - 25
+        motivation_x = width - motivation_width - 40
         
-        draw.text((motivation_x + 2, height - 35), motivation, font=font_small, fill=(0, 0, 0, 150))  # Тень
-        draw.text((motivation_x, height - 37), motivation, font=font_small, fill=(255, 165, 0))  # Оранжевый как в Strava
+        draw.text((motivation_x + 3, height - 60), motivation, font=font_small, fill=(0, 0, 0, 150))  # Тень
+        draw.text((motivation_x, height - 63), motivation, font=font_small, fill=(255, 165, 0))  # Оранжевый как в Strava
         
         # Сохраняем изображение
         output = BytesIO()
