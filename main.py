@@ -302,7 +302,7 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         image.paste(gradient_overlay, (0, height - panel_height), gradient_overlay)
         
         # === ВЕРХНИЙ ЛОГОТИП (как в Strava) ===
-        brand_text = "🏃‍♂️ Бег: свои люди"
+        brand_text = "🏃‍♂️ Running Club"
         
         # Создаем стильную рамку для логотипа
         brand_bbox = draw.textbbox((0, 0), brand_text, font=font_small)
@@ -335,8 +335,8 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         draw.text((distance_x + shadow_offset, distance_y + shadow_offset), main_distance, font=font_large, fill=(0, 0, 0, 150))
         draw.text((distance_x, distance_y), main_distance, font=font_large, fill='white')
         
-        # Подпись "РАССТОЯНИЕ" под километражем
-        label_text = "РАССТОЯНИЕ"
+        # Подпись "DISTANCE" под километражем
+        label_text = "DISTANCE"
         label_bbox = draw.textbbox((0, 0), label_text, font=font_small)
         label_width = label_bbox[2] - label_bbox[0]
         label_x = (width - label_width) // 2
@@ -354,11 +354,11 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         
         # Мотивационная фраза справа внизу (как в Strava)
         if distance_x >= 10:
-            motivation = "💪 ОТЛИЧНО!"
+            motivation = "💪 AWESOME!"
         elif distance_x >= 5:
-            motivation = "🔥 КРУТО!"
+            motivation = "🔥 GREAT JOB!"
         else:
-            motivation = "👍 ТАК ДЕРЖАТЬ!"
+            motivation = "👍 KEEP GOING!"
             
         motivation_bbox = draw.textbbox((0, 0), motivation, font=font_small)
         motivation_width = motivation_bbox[2] - motivation_bbox[0]
