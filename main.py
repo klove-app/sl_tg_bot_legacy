@@ -263,9 +263,10 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
             logger.info(f"Используем шрифт: {font_path}")
             
             try:
-                font_large = ImageFont.truetype(font_path, 60)  # Для километража
-                font_medium = ImageFont.truetype(font_path, 30)  # Для имени и даты
-                font_brand = ImageFont.truetype(font_path, 50)   # Для названия чата
+                # Увеличиваем размеры шрифтов для лучшей читаемости
+                font_large = ImageFont.truetype(font_path, 80)   # Для главного километража
+                font_medium = ImageFont.truetype(font_path, 36)  # Для подписей и информации
+                font_small = ImageFont.truetype(font_path, 28)   # Для мелкого текста
                 logger.info("Шрифты успешно загружены")
             except Exception as e:
                 logger.error(f"Ошибка при загрузке шрифтов: {e}")
@@ -276,7 +277,7 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
             try:
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
-                font_brand = ImageFont.load_default()
+                font_small = ImageFont.load_default()
                 logger.info("Стандартный шрифт загружен")
             except Exception as e:
                 logger.error(f"Ошибка при загрузке стандартного шрифта: {e}")
@@ -285,39 +286,86 @@ def add_watermark(image_bytes, info_text, brand_text, distance_text, distance_x)
         # Размеры изображения
         width, height = image.size
         
-        # Верхний водяной знак (название чата)
-        brand_text = "Бег: свои люди"  # Заменяем название бота на название чата
-        brand_bbox = draw.textbbox((0, 0), brand_text, font=font_brand)
+        # === СТИЛЬНЫЙ ДИЗАЙН В СТИЛЕ STRAVA/INSTAGRAM ===
+        
+        # Создаем градиентный фон для нижней панели (как в Strava)
+        panel_height = 120
+        gradient_overlay = Image.new('RGBA', (width, panel_height), (0, 0, 0, 0))
+        gradient_draw = ImageDraw.Draw(gradient_overlay)
+        
+        # Создаем градиент от прозрачного к черному
+        for y in range(panel_height):
+            alpha = int((y / panel_height) * 180)  # Постепенное увеличение прозрачности
+            gradient_draw.rectangle([(0, y), (width, y + 1)], fill=(0, 0, 0, alpha))
+        
+        # Накладываем градиент снизу
+        image.paste(gradient_overlay, (0, height - panel_height), gradient_overlay)
+        
+        # === ВЕРХНИЙ ЛОГОТИП (как в Strava) ===
+        brand_text = "🏃‍♂️ Бег: свои люди"
+        
+        # Создаем стильную рамку для логотипа
+        brand_bbox = draw.textbbox((0, 0), brand_text, font=font_small)
         brand_width = brand_bbox[2] - brand_bbox[0]
         brand_height = brand_bbox[3] - brand_bbox[1]
         
-        # Получаем цвет фона в зависимости от дистанции
-        background_color = get_background_color(distance_x)
+        # Полупрозрачная рамка с закругленными краями (имитация)
+        logo_padding = 15
+        logo_bg = Image.new('RGBA', (brand_width + logo_padding * 2, brand_height + logo_padding * 2), (0, 0, 0, 120))
         
-        # Полупрозрачный фон только под текстом
-        padding = 20  # Отступ вокруг текста
-        top_background = Image.new('RGBA', (brand_width + padding * 2, brand_height + padding * 2), background_color)
+        # Размещаем логотип в правом верхнем углу
+        logo_x = width - brand_width - logo_padding * 2 - 20
+        logo_y = 20
+        image.paste(logo_bg, (logo_x, logo_y), logo_bg)
+        draw.text((logo_x + logo_padding, logo_y + logo_padding), brand_text, font=font_small, fill='white')
         
-        # Размещаем в правом верхнем углу с отступом
-        top_x = width - brand_width - padding * 3  # Дополнительный отступ справа
-        top_y = padding
-        image.paste(top_background, (top_x, top_y), top_background)
+        # === ОСНОВНАЯ ИНФОРМАЦИЯ ВНИЗУ (как в Strava) ===
         
-        # Рисуем название чата
-        draw.text((top_x + padding, top_y + padding), brand_text, font=font_brand, fill='white')
-        
-        # Нижний водяной знак (имя и километраж)
-        # Полупрозрачный фон для нижнего водяного знака
-        bottom_background = Image.new('RGBA', (width, 80), background_color)
-        image.paste(bottom_background, (0, height - 80), bottom_background)
-        
-        # Рисуем имя пользователя и дату слева внизу
-        draw.text((20, height - 60), info_text, font=font_medium, fill='white')
-        
-        # Рисуем километраж справа внизу
-        distance_bbox = draw.textbbox((0, 0), distance_text, font=font_large)
+        # Большой километраж (главная метрика)
+        main_distance = distance_text
+        distance_bbox = draw.textbbox((0, 0), main_distance, font=font_large)
         distance_width = distance_bbox[2] - distance_bbox[0]
-        draw.text((width - distance_width - 20, height - 70), distance_text, font=font_large, fill='white')
+        
+        # Размещаем километраж по центру внизу
+        distance_x = (width - distance_width) // 2
+        distance_y = height - 80
+        
+        # Добавляем тень для лучшей читаемости
+        shadow_offset = 2
+        draw.text((distance_x + shadow_offset, distance_y + shadow_offset), main_distance, font=font_large, fill=(0, 0, 0, 150))
+        draw.text((distance_x, distance_y), main_distance, font=font_large, fill='white')
+        
+        # Подпись "РАССТОЯНИЕ" под километражем
+        label_text = "РАССТОЯНИЕ"
+        label_bbox = draw.textbbox((0, 0), label_text, font=font_small)
+        label_width = label_bbox[2] - label_bbox[0]
+        label_x = (width - label_width) // 2
+        label_y = distance_y + 50
+        
+        draw.text((label_x + 1, label_y + 1), label_text, font=font_small, fill=(0, 0, 0, 150))  # Тень
+        draw.text((label_x, label_y), label_text, font=font_small, fill=(200, 200, 200))  # Серый текст
+        
+        # === ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ ===
+        
+        # Имя пользователя и дата слева внизу
+        user_info = f"@{info_text.split(' • ')[0]} • {info_text.split(' • ')[1]}"
+        draw.text((21, height - 30), user_info, font=font_small, fill=(0, 0, 0, 150))  # Тень
+        draw.text((20, height - 31), user_info, font=font_small, fill='white')
+        
+        # Мотивационная фраза справа внизу (как в Strava)
+        if distance_x >= 10:
+            motivation = "💪 ОТЛИЧНО!"
+        elif distance_x >= 5:
+            motivation = "🔥 КРУТО!"
+        else:
+            motivation = "👍 ТАК ДЕРЖАТЬ!"
+            
+        motivation_bbox = draw.textbbox((0, 0), motivation, font=font_small)
+        motivation_width = motivation_bbox[2] - motivation_bbox[0]
+        motivation_x = width - motivation_width - 20
+        
+        draw.text((motivation_x + 1, height - 30), motivation, font=font_small, fill=(0, 0, 0, 150))  # Тень
+        draw.text((motivation_x, height - 31), motivation, font=font_small, fill=(255, 165, 0))  # Оранжевый как в Strava
         
         # Сохраняем изображение
         output = BytesIO()
