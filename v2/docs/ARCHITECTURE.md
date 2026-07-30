@@ -43,6 +43,12 @@ when the user replies to it. `/run` remains a backwards-compatible alternative.
 Parent chat and runner rows are flushed before a run insert so the composite
 foreign key is satisfied consistently on PostgreSQL.
 
+Successful run replies show the recorded distance and date, optional note,
+month-to-date distance and run count, current monthly leaderboard position, and
+shortcuts to `/top`, `/me`, and `/undo`. The same period buttons used by `/top`
+are attached to the confirmation. Leaderboards show one compact row per runner
+plus group runner, run, and distance totals.
+
 ## Time
 
 Telegram timestamps are converted into `BOT_TIMEZONE` before deriving the run

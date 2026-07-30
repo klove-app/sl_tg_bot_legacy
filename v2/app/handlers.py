@@ -3,7 +3,6 @@ from __future__ import annotations
 import html
 import re
 from datetime import UTC, datetime
-from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from aiogram import Bot, F, Router
@@ -14,7 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings
 from app.keyboards import top_period_keyboard, undo_keyboard
 from app.parsing import ParsedRun, RunParseError, parse_run_text
-from app.periods import Period, period_label, period_range
+from app.periods import Period, period_range
+from app.presentation import (
+    format_km,
+    pluralize,
+    render_ranking,
+    render_run_confirmation,
+)
 from app.repository import (
     RunInput,
     add_run,
@@ -64,10 +69,6 @@ def _display_name(message: Message) -> str:
     return message.from_user.full_name[:255]
 
 
-def _format_km(value: Decimal) -> str:
-    return f"{value:.2f}".rstrip("0").rstrip(".")
-
-
 async def _save_parsed_run(
     message: Message,
     parsed: ParsedRun,
@@ -94,24 +95,43 @@ async def _save_parsed_run(
     )
     if not created:
         await message.reply(
-            f"Эта пробежка уже учтена: <b>{_format_km(run.distance_km)} км</b>."
+            f"Эта пробежка уже учтена: <b>{format_km(run.distance_km)} км</b>."
         )
         return
 
     await session.commit()
     today = _local_date(message, settings)
+    month_range = period_range(Period.MONTH, today)
     month_stats = await get_user_stats(
         session,
         chat_id=message.chat.id,
         user_id=message.from_user.id,
-        date_range=period_range(Period.MONTH, today),
+        date_range=month_range,
+    )
+    month_ranking = await get_ranking(
+        session,
+        chat_id=message.chat.id,
+        date_range=month_range,
+        limit=1000,
+    )
+    month_place = next(
+        (
+            index
+            for index, entry in enumerate(month_ranking, start=1)
+            if entry.user_id == message.from_user.id
+        ),
+        None,
     )
     await message.reply(
-        "✅ Пробежка записана\n"
-        f"🏃 <b>{_format_km(parsed.distance_km)} км</b>\n"
-        f"📅 {run.run_date:%d.%m.%Y}\n\n"
-        f"За месяц: <b>{_format_km(month_stats.total_km)} км</b> "
-        f"за {month_stats.runs_count} пробежек."
+        render_run_confirmation(
+            distance_km=parsed.distance_km,
+            run_date=run.run_date,
+            note=parsed.note,
+            month_stats=month_stats,
+            month_place=month_place,
+            runners_count=len(month_ranking),
+        ),
+        reply_markup=top_period_keyboard(Period.MONTH),
     )
 
 
@@ -185,26 +205,7 @@ async def _render_top(
         chat_id=chat_id,
         date_range=date_range,
     )
-    if not ranking:
-        return f"За {period_label(period)} пробежек пока нет."
-
-    medals = ["🥇", "🥈", "🥉"]
-    lines = [
-        f"🏆 <b>Рейтинг за {period_label(period)}</b>",
-        (
-            f"{totals.runners_count} участников · {totals.runs_count} пробежек · "
-            f"{_format_km(totals.total_km)} км"
-        ),
-        "",
-    ]
-    for index, entry in enumerate(ranking, start=1):
-        place = medals[index - 1] if index <= len(medals) else f"{index}."
-        name = html.escape(entry.display_name)
-        lines.append(
-            f"{place} <b>{name}</b> — {_format_km(entry.total_km)} км "
-            f"({entry.runs_count})"
-        )
-    return "\n".join(lines)
+    return render_ranking(period=period, ranking=ranking, totals=totals)
 
 
 @router.message(Command("top"))
@@ -278,11 +279,12 @@ async def me_command(
     )
     await message.reply(
         f"👤 <b>{html.escape(_display_name(message))}</b>\n\n"
-        f"Этот месяц: <b>{_format_km(month.total_km)} км</b> "
-        f"({month.runs_count} пробежек)\n"
-        f"Этот год: <b>{_format_km(year.total_km)} км</b> "
-        f"({year.runs_count} пробежек)\n"
-        f"Лучшая пробежка года: <b>{_format_km(year.best_run_km)} км</b>"
+        f"📊 Этот месяц: <b>{format_km(month.total_km)} км</b> "
+        f"· {pluralize(month.runs_count, 'пробежка', 'пробежки', 'пробежек')}\n"
+        f"🗓 Этот год: <b>{format_km(year.total_km)} км</b> "
+        f"· {pluralize(year.runs_count, 'пробежка', 'пробежки', 'пробежек')}\n"
+        f"⚡ Лучшая пробежка: <b>{format_km(year.best_run_km)} км</b>\n\n"
+        "🏆 /top · ↩️ /undo"
     )
 
 
@@ -303,7 +305,7 @@ async def undo_command(
         await message.reply("У вас нет пробежек, которые можно удалить.")
         return
     await message.reply(
-        f"Удалить последнюю запись: <b>{_format_km(run.distance_km)} км</b> "
+        f"Удалить последнюю запись: <b>{format_km(run.distance_km)} км</b> "
         f"от {run.run_date:%d.%m.%Y}?",
         reply_markup=undo_keyboard(run.id),
     )
@@ -347,7 +349,7 @@ async def undo_callback(
         return
     await session.commit()
     await callback.message.edit_text(
-        f"🗑 Запись на <b>{_format_km(run.distance_km)} км</b> удалена."
+        f"🗑 Запись на <b>{format_km(run.distance_km)} км</b> удалена."
     )
     await callback.answer()
 

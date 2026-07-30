@@ -10,15 +10,17 @@ def top_period_keyboard(active: Period) -> InlineKeyboardMarkup:
         Period.YEAR: "Год",
         Period.ALL: "Всё время",
     }
+    buttons = {
+        period: InlineKeyboardButton(
+            text=("✓ " if period is active else "") + label,
+            callback_data=f"top:{period.value}",
+        )
+        for period, label in labels.items()
+    }
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=("• " if period is active else "") + label,
-                    callback_data=f"top:{period.value}",
-                )
-                for period, label in labels.items()
-            ]
+            [buttons[Period.WEEK], buttons[Period.MONTH]],
+            [buttons[Period.YEAR], buttons[Period.ALL]],
         ]
     )
 
