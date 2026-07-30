@@ -5,7 +5,7 @@ import re
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
-from aiogram import Bot, F, Router
+from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -357,7 +357,6 @@ async def undo_callback(
 @router.message(F.text | F.caption)
 async def mentioned_run(
     message: Message,
-    bot: Bot,
     session: AsyncSession,
     settings: Settings,
     bot_username: str,
@@ -369,12 +368,7 @@ async def mentioned_run(
         return
 
     mention = f"@{bot_username}".lower() in text.lower()
-    replied_to_bot = bool(
-        message.reply_to_message
-        and message.reply_to_message.from_user
-        and message.reply_to_message.from_user.id == bot.id
-    )
-    if not mention and not replied_to_bot:
+    if not mention:
         return
     if not _chat_allowed(message, settings):
         await message.reply("Этот чат не включён в список разрешённых.")

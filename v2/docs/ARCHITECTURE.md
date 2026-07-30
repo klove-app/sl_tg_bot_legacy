@@ -38,8 +38,9 @@ Legacy imports use `legacy_log_id` as a second idempotency key.
 - `/undo`: soft-deletes the caller's latest active run after confirmation
 - `/help`: usage summary
 
-Mentioning the bot is the primary run-entry flow. The bot also accepts a distance
-when the user replies to it. `/run` remains a backwards-compatible alternative.
+Mentioning the bot is the primary run-entry flow. Ordinary replies to the bot are
+ignored unless their own text or photo caption explicitly mentions the bot.
+`/run` remains a backwards-compatible alternative.
 Parent chat and runner rows are flushed before a run insert so the composite
 foreign key is satisfied consistently on PostgreSQL.
 
