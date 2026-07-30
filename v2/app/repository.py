@@ -104,6 +104,10 @@ async def add_run(session: AsyncSession, data: RunInput) -> tuple[Run, bool]:
             return existing, False
 
     await upsert_chat_and_runner(session, data)
+    # Flush the parent rows explicitly before inserting a run. Relying on
+    # SQLAlchemy's unit-of-work ordering here is unsafe because Run references
+    # Runner through a composite foreign key without an ORM relationship.
+    await session.flush()
     run = Run(
         chat_id=data.chat_id,
         user_id=data.user_id,

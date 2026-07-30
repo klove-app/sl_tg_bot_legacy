@@ -37,7 +37,8 @@ def _chat_allowed(message: Message, settings: Settings) -> bool:
 async def _require_group(message: Message, settings: Settings) -> bool:
     if message.chat.type not in GROUP_TYPES:
         await message.answer(
-            "Добавьте меня в групповой чат и используйте там <code>/run 5.2</code>."
+            "Добавьте меня в групповой чат и напишите там "
+            "<code>@runforestsweaty_bot 5.2</code>."
         )
         return False
     if not _chat_allowed(message, settings):
@@ -122,7 +123,7 @@ async def start(message: Message, settings: Settings) -> None:
             return
         await message.answer(
             "Я считаю километры отдельно для этого чата.\n\n"
-            "Добавить пробежку: <code>/run 5.2</code>\n"
+            "Добавить пробежку: <code>@runforestsweaty_bot 5.2</code>\n"
             "Рейтинг: /top\n"
             "Моя статистика: /me\n"
             "Отменить последнюю запись: /undo"
@@ -134,9 +135,10 @@ async def start(message: Message, settings: Settings) -> None:
 @router.message(Command("help"))
 async def help_command(message: Message) -> None:
     await message.answer(
+        "<b>Как записать пробежку</b>\n"
+        "<code>@runforestsweaty_bot 5.2</code>\n"
+        "<code>@runforestsweaty_bot 10 утренний парк</code> — с заметкой\n\n"
         "<b>Команды</b>\n"
-        "<code>/run 5.2</code> — записать пробежку\n"
-        "<code>/run 10 утренний парк</code> — добавить заметку\n"
         "/top — рейтинг этой группы\n"
         "/me — моя статистика в этой группе\n"
         "/undo — удалить свою последнюю запись\n\n"

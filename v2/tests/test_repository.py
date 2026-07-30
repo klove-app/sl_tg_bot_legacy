@@ -20,6 +20,8 @@ from app.repository import (
 async def database():
     database = create_database("sqlite+aiosqlite:///:memory:")
     await create_schema(database.engine)
+    async with database.engine.begin() as connection:
+        await connection.exec_driver_sql("PRAGMA foreign_keys=ON")
     yield database
     await database.engine.dispose()
 
@@ -42,6 +44,24 @@ def run_input(
         distance_km=Decimal(distance),
         run_date=run_date,
     )
+
+
+@pytest.mark.asyncio
+async def test_first_run_creates_foreign_key_parents_before_run(database) -> None:
+    async with database.sessions() as session:
+        run, created = await add_run(
+            session,
+            run_input(
+                chat_id=-1001487049035,
+                user_id=1431390352,
+                message_id=1,
+                distance="6.03",
+            ),
+        )
+        await session.commit()
+
+    assert created is True
+    assert run.distance_km == Decimal("6.03")
 
 
 @pytest.mark.asyncio

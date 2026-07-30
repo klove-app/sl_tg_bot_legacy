@@ -31,14 +31,17 @@ Legacy imports use `legacy_log_id` as a second idempotency key.
 
 ## Commands
 
-- `/run <km> [note]`: records a run in the current group
+- `@runforestsweaty_bot <km> [note]`: records a run in the current group
+- `/run <km> [note]`: backwards-compatible alternative
 - `/top`: chat leaderboard with week/month/year/all-time buttons
 - `/me`: the caller's month and year statistics in the current group
 - `/undo`: soft-deletes the caller's latest active run after confirmation
 - `/help`: usage summary
 
-The bot also accepts a distance when the user replies to the bot or mentions it.
-`/run` remains the reliable path when Telegram privacy mode is enabled.
+Mentioning the bot is the primary run-entry flow. The bot also accepts a distance
+when the user replies to it. `/run` remains a backwards-compatible alternative.
+Parent chat and runner rows are flushed before a run insert so the composite
+foreign key is satisfied consistently on PostgreSQL.
 
 ## Time
 

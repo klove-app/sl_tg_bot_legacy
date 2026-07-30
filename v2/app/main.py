@@ -41,7 +41,6 @@ async def run_bot() -> None:
         me = await bot.get_me()
         await bot.set_my_commands(
             [
-                BotCommand(command="run", description="Записать пробежку: /run 5.2"),
                 BotCommand(command="top", description="Рейтинг группы"),
                 BotCommand(command="me", description="Моя статистика"),
                 BotCommand(command="undo", description="Удалить последнюю запись"),
