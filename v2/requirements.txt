@@ -1,0 +1,4 @@
+aiogram==3.30.0
+SQLAlchemy[asyncio]==2.0.51
+asyncpg==0.31.0
+pydantic-settings==2.14.2
