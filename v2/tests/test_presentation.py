@@ -1,6 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
+from app.achievements import ACHIEVEMENT_BY_CODE, AwardView
 from app.leagues import League
 from app.periods import Period, period_range
 from app.presentation import (
@@ -38,11 +39,14 @@ def test_render_run_confirmation_contains_stats_rank_and_commands() -> None:
         league=League.TRAIL,
         league_place=2,
         league_runners_count=8,
+        new_awards=[ACHIEVEMENT_BY_CODE["club_5"]],
     )
 
     assert "<b>6,03 км</b> · 30 июля" in text
     assert "За месяц: <b>18,43 км</b> · 3 пробежки" in text
     assert "Лига «Тропа»: <b>№2</b> из 8" in text
+    assert "🎖 <b>Новые награды</b>" in text
+    assert "🔵 Клуб 5 км" in text
     assert "/top · 👤 /me · ↩️ /undo" in text
 
 
@@ -106,8 +110,20 @@ def test_render_monthly_summary_lists_all_leagues_and_totals() -> None:
         date_range=period_range(Period.MONTH, date(2026, 8, 31)),
         rankings={League.TEMPO: [entry], League.TRAIL: []},
         totals=Totals(total_km=Decimal("25.40"), runs_count=4, runners_count=1),
+        awards=[
+            AwardView(
+                user_id=1,
+                display_name="Иван",
+                definition=ACHIEVEMENT_BY_CODE["not_accidental"],
+                reference_date=date(2026, 8, 10),
+            )
+        ],
+        sleeping_runners=["Ксения & друзья"],
     )
 
     assert "<b>Итоги месяца</b> · 1–31 августа" in text
     assert "25,4 км</b> вместе" in text
+    assert "👟 <b>Иван</b> — Это уже не случайность" in text
+    assert "🔥 Держит Темп — <b>Иван</b>" in text
+    assert "Спящие ячейки:</b> Ксения &amp; друзья" in text
     assert "переходят в «Темп»" in text

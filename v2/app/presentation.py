@@ -4,6 +4,7 @@ import html
 from datetime import date
 from decimal import Decimal
 
+from app.achievements import AchievementDefinition, AwardView
 from app.leagues import LEAGUE_EMOJI, LEAGUE_TITLES, League
 from app.periods import DateRange, Period
 from app.repository import RankingEntry, Totals, UserStats
@@ -62,6 +63,7 @@ def render_run_confirmation(
     league: League | None,
     league_place: int | None,
     league_runners_count: int,
+    new_awards: list[AchievementDefinition] | None = None,
 ) -> str:
     lines = [
         "✅ <b>Пробежка записана</b>",
@@ -84,6 +86,15 @@ def render_run_confirmation(
         lines.append(
             f"{LEAGUE_EMOJI[league]} Лига «{LEAGUE_TITLES[league]}»: "
             f"<b>№{league_place}</b> из {league_runners_count}"
+        )
+
+    if new_awards:
+        lines.extend(
+            [
+                "",
+                "🎖 <b>Новые награды</b>",
+                *(f"{award.emoji} {award.title}" for award in new_awards),
+            ]
         )
 
     lines.extend(
@@ -173,6 +184,8 @@ def render_period_summary(
     date_range: DateRange,
     rankings: dict[League, list[RankingEntry]],
     totals: Totals,
+    awards: list[AwardView] | None = None,
+    sleeping_runners: list[str] | None = None,
 ) -> str:
     summary_title = "Итоги недели" if period is Period.WEEK else "Итоги месяца"
     active_runners = pluralize(
@@ -201,7 +214,39 @@ def render_period_summary(
             ),
         ]
     )
+    if awards:
+        lines.extend(["", "🎖 <b>Новые награды</b>"])
+        lines.extend(
+            f"{award.definition.emoji} <b>{html.escape(award.display_name)}</b> — "
+            f"{award.definition.title}"
+            for award in awards
+        )
     if period is Period.MONTH:
+        cup_lines: list[str] = []
+        tempo = next(
+            (entry for entry in rankings.get(League.TEMPO, []) if entry.runs_count),
+            None,
+        )
+        trail = next(
+            (entry for entry in rankings.get(League.TRAIL, []) if entry.runs_count),
+            None,
+        )
+        if tempo is not None:
+            cup_lines.append(
+                f"🔥 Держит Темп — <b>{html.escape(tempo.display_name)}</b>"
+            )
+        if trail is not None:
+            cup_lines.append(
+                f"🌱 Хозяин Тропы — <b>{html.escape(trail.display_name)}</b>"
+            )
+        if cup_lines:
+            lines.extend(["", "🏅 <b>Звания месяца</b>", *cup_lines])
+        if sleeping_runners:
+            visible = sleeping_runners[:10]
+            names = ", ".join(html.escape(name) for name in visible)
+            if len(sleeping_runners) > len(visible):
+                names += f" и ещё {len(sleeping_runners) - len(visible)}"
+            lines.extend(["", f"😴 <b>Спящие ячейки:</b> {names}"])
         lines.extend(
             [
                 "",

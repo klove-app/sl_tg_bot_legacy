@@ -8,6 +8,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.types import BotCommand
 
+from app.achievements import backfill_achievements
 from app.config import get_settings
 from app.db import create_database, create_schema
 from app.handlers import router
@@ -27,6 +28,7 @@ async def run_bot() -> None:
 
     database = create_database(settings.database_url)
     await create_schema(database.engine)
+    await backfill_achievements(database.sessions)
 
     bot = Bot(
         token=settings.telegram_bot_token.get_secret_value(),

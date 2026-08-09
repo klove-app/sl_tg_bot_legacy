@@ -148,3 +148,31 @@ class SummaryDelivery(Base):
             ondelete="CASCADE",
         ),
     )
+
+
+class AchievementAward(Base):
+    __tablename__ = "runbot_achievement_awards"
+
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    code: Mapped[str] = mapped_column(String(64), primary_key=True)
+    period_key: Mapped[str] = mapped_column(
+        String(32),
+        primary_key=True,
+        default="lifetime",
+    )
+    reference_date: Mapped[date] = mapped_column(Date, nullable=False)
+    awarded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["chat_id", "user_id"],
+            ["runbot_runners.chat_id", "runbot_runners.user_id"],
+            ondelete="CASCADE",
+        ),
+        Index(
+            "ix_runbot_achievement_awards_chat_date",
+            "chat_id",
+            "reference_date",
+        ),
+    )

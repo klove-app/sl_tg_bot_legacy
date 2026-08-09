@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 from aiogram import Bot
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.achievements import get_period_awards, get_sleeping_runners
 from app.config import Settings
 from app.leagues import League
 from app.periods import (
@@ -118,12 +119,28 @@ async def _summary_text(
         chat_id=chat_id,
         date_range=spec.date_range,
     )
+    awards = await get_period_awards(
+        session,
+        chat_id=chat_id,
+        date_range=spec.date_range,
+    )
+    sleeping_runners = (
+        await get_sleeping_runners(
+            session,
+            chat_id=chat_id,
+            today=spec.date_range.end,
+        )
+        if spec.period is Period.MONTH
+        else []
+    )
     return (
         render_period_summary(
             period=spec.period,
             date_range=spec.date_range,
             rankings=rankings,
             totals=totals,
+            awards=awards,
+            sleeping_runners=sleeping_runners,
         ),
         totals.runs_count,
     )

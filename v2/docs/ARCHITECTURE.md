@@ -27,6 +27,8 @@ permits only one active long-polling consumer.
 - `runbot_runs`: immutable run facts plus a nullable `deleted_at` audit marker
 - `runbot_league_memberships`: immutable per-month league assignments
 - `runbot_summary_deliveries`: idempotency ledger for scheduled chat summaries
+- `runbot_achievement_awards`: permanent, idempotent runner medals with the date
+  on which each condition was first met
 
 `(chat_id, telegram_message_id)` is unique, making delivery retries idempotent.
 Legacy imports use `legacy_log_id` as a second idempotency key.
@@ -52,6 +54,32 @@ month-to-date distance and run count, current monthly leaderboard position, and
 shortcuts to `/top`, `/me`, and `/undo`. The same period buttons used by `/top`
 are attached to the confirmation. Leaderboards show one compact row per runner
 plus group runner, run, and distance totals.
+
+Newly earned medals are appended to the successful run reply. `/me` shows the
+runner's dynamic activity title and all permanent medals. Existing run history
+is evaluated silently at startup, so deploying the feature neither loses old
+achievements nor emits backfill messages into Telegram.
+
+## Titles and achievements
+
+Activity titles are derived at read time. A runner is a «Спящая ячейка» after
+60 days without a run and «Снова в эфире» for 14 days after returning from a
+60-day gap. Active runners progress through «Новая ячейка», «На связи», and
+«Полевой сотрудник»; a 15–59 day gap is «Вне эфира».
+
+Permanent achievements cover:
+
+- single-run clubs at 2, 5, and 10 km
+- «С дивана» I–III for a 2 km start/return, a second run within 10 days, and
+  four runs within 30 days
+- three lifetime runs, three runs in a calendar week, and four consecutive
+  active calendar weeks
+- lifetime totals of 100, 500, and 1000 km
+
+The award key is unique by chat, runner, code, and period key. Evaluation is
+therefore safe to repeat after restarts. Scheduled summaries include awards
+whose first qualifying date falls inside the closed period. Monthly summaries
+also name each active league leader and list runners inactive for 60 days.
 
 ## Leagues
 
@@ -82,7 +110,8 @@ The bot runs a lightweight scheduler alongside long polling. It publishes:
 - a summary of the closed month on the first calendar day at `SUMMARY_HOUR` plus
   `MONTHLY_SUMMARY_MINUTE` (09:10 by default)
 
-Both summaries show every participant in both leagues and group totals. Empty
+Both summaries show every participant in both leagues, new achievements, and
+group totals. Monthly summaries also show league titles and sleeping cells. Empty
 periods are recorded but not posted. `runbot_summary_deliveries` prevents a
 restart from duplicating a summary. The service remains single-replica because
 both Telegram polling and summary delivery assume one active process.

@@ -10,6 +10,11 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.achievements import (
+    evaluate_achievements,
+    get_runner_status,
+    get_user_awards,
+)
 from app.config import Settings
 from app.keyboards import top_period_keyboard, undo_keyboard
 from app.leagues import LEAGUE_EMOJI, LEAGUE_TITLES, League
@@ -118,6 +123,11 @@ async def _save_parsed_run(
         membership_month=current_month,
         seed_end=today,
     )
+    new_awards = await evaluate_achievements(
+        session,
+        chat_id=message.chat.id,
+        user_id=message.from_user.id,
+    )
     await session.commit()
     month_range = period_range(Period.MONTH, today)
     month_stats = await get_user_stats(
@@ -155,6 +165,7 @@ async def _save_parsed_run(
             league=league,
             league_place=league_place,
             league_runners_count=len(league_ranking),
+            new_awards=new_awards,
         ),
         reply_markup=top_period_keyboard(Period.MONTH, today=today),
     )
@@ -381,19 +392,37 @@ async def me_command(
         date_range=period_range(Period.MONTH, today),
     )
     league = assignments.get(message.from_user.id)
+    status = await get_runner_status(
+        session,
+        chat_id=message.chat.id,
+        user_id=message.from_user.id,
+        today=today,
+    )
+    awards = await get_user_awards(
+        session,
+        chat_id=message.chat.id,
+        user_id=message.from_user.id,
+    )
     league_line = (
         f"{LEAGUE_EMOJI[league]} Лига «{LEAGUE_TITLES[league]}»\n\n"
         if league is not None
         else ""
     )
+    awards_line = (
+        "\n".join(f"{award.emoji} {award.title}" for award in awards)
+        if awards
+        else "Пока без медалей — первая уже близко 👟"
+    )
     await message.reply(
         f"👤 <b>{html.escape(_display_name(message))}</b>\n\n"
+        f"{status.emoji} Звание: <b>{status.title}</b>\n"
         f"{league_line}"
         f"📅 Эта неделя: <b>{format_km(week.total_km)} км</b> "
         f"· {pluralize(week.runs_count, 'пробежка', 'пробежки', 'пробежек')}\n"
         f"📊 Этот месяц: <b>{format_km(month.total_km)} км</b> "
         f"· {pluralize(month.runs_count, 'пробежка', 'пробежки', 'пробежек')}\n"
         f"⚡ Лучшая за месяц: <b>{format_km(month.best_run_km)} км</b>\n\n"
+        f"🎖 <b>Медали</b>\n{awards_line}\n\n"
         "🏆 /top · ↩️ /undo"
     )
 
