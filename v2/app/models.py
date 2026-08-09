@@ -106,3 +106,45 @@ class Run(Base):
             "run_date",
         ),
     )
+
+
+class LeagueMembership(Base):
+    __tablename__ = "runbot_league_memberships"
+
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    month_start: Mapped[date] = mapped_column(Date, primary_key=True)
+    league: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["chat_id", "user_id"],
+            ["runbot_runners.chat_id", "runbot_runners.user_id"],
+            ondelete="CASCADE",
+        ),
+        Index(
+            "ix_runbot_league_memberships_chat_month_league",
+            "chat_id",
+            "month_start",
+            "league",
+        ),
+    )
+
+
+class SummaryDelivery(Base):
+    __tablename__ = "runbot_summary_deliveries"
+
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    summary_kind: Mapped[str] = mapped_column(String(16), primary_key=True)
+    period_start: Mapped[date] = mapped_column(Date, primary_key=True)
+    period_end: Mapped[date] = mapped_column(Date, nullable=False)
+    delivered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["chat_id"],
+            ["runbot_chats.chat_id"],
+            ondelete="CASCADE",
+        ),
+    )

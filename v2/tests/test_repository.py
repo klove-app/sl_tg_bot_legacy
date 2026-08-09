@@ -5,10 +5,13 @@ import pytest
 import pytest_asyncio
 
 from app.db import create_database, create_schema
+from app.leagues import League
 from app.periods import Period, period_range
 from app.repository import (
     RunInput,
     add_run,
+    ensure_month_leagues,
+    get_league_ranking,
     get_ranking,
     get_totals,
     get_user_stats,
@@ -154,3 +157,49 @@ async def test_soft_delete_updates_stats_and_checks_owner(database) -> None:
     assert deleted is not None
     assert stats.total_km == Decimal("0.00")
     assert stats.runs_count == 0
+
+
+@pytest.mark.asyncio
+async def test_month_leagues_are_seeded_and_ranked_independently(database) -> None:
+    async with database.sessions() as session:
+        for user_id, distance in [(10, "30.00"), (20, "20.00"), (30, "10.00"), (40, "5.00")]:
+            await add_run(
+                session,
+                run_input(
+                    chat_id=1,
+                    user_id=user_id,
+                    message_id=user_id,
+                    distance=distance,
+                    run_date=date(2026, 8, 9),
+                ),
+            )
+
+        assignments = await ensure_month_leagues(
+            session,
+            chat_id=1,
+            membership_month=date(2026, 8, 1),
+            seed_end=date(2026, 8, 9),
+        )
+        tempo = await get_league_ranking(
+            session,
+            chat_id=1,
+            membership_month=date(2026, 8, 1),
+            league=League.TEMPO,
+            date_range=period_range(Period.MONTH, date(2026, 8, 9)),
+        )
+        trail = await get_league_ranking(
+            session,
+            chat_id=1,
+            membership_month=date(2026, 8, 1),
+            league=League.TRAIL,
+            date_range=period_range(Period.MONTH, date(2026, 8, 9)),
+        )
+
+    assert assignments == {
+        10: League.TEMPO,
+        20: League.TEMPO,
+        30: League.TRAIL,
+        40: League.TRAIL,
+    }
+    assert [entry.user_id for entry in tempo] == [10, 20]
+    assert [entry.user_id for entry in trail] == [30, 40]

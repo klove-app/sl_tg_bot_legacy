@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import StrEnum
@@ -35,3 +36,22 @@ def period_label(period: Period) -> str:
         Period.YEAR: "этот год",
         Period.ALL: "всё время",
     }[period]
+
+
+def month_start(value: date) -> date:
+    return value.replace(day=1)
+
+
+def previous_month_start(value: date) -> date:
+    return (month_start(value) - timedelta(days=1)).replace(day=1)
+
+
+def month_date_range(value: date) -> DateRange:
+    start = month_start(value)
+    end = start.replace(day=calendar.monthrange(start.year, start.month)[1])
+    return DateRange(start=start, end=end)
+
+
+def week_date_range(value: date) -> DateRange:
+    start = value - timedelta(days=value.weekday())
+    return DateRange(start=start, end=start + timedelta(days=6))

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import html
 import re
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 from aiogram import F, Router
@@ -12,19 +12,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
 from app.keyboards import top_period_keyboard, undo_keyboard
+from app.leagues import LEAGUE_EMOJI, LEAGUE_TITLES, League
 from app.parsing import ParsedRun, RunParseError, parse_run_text
-from app.periods import Period, period_range
+from app.periods import DateRange, Period, month_start, period_range
 from app.presentation import (
     format_km,
     pluralize,
-    render_ranking,
+    render_league_ranking,
     render_run_confirmation,
 )
 from app.repository import (
+    RankingEntry,
     RunInput,
     add_run,
+    ensure_month_leagues,
     get_latest_active_run,
-    get_ranking,
+    get_league_ranking,
     get_totals,
     get_user_stats,
     soft_delete_owned_run,
@@ -99,8 +102,15 @@ async def _save_parsed_run(
         )
         return
 
-    await session.commit()
     today = _local_date(message, settings)
+    current_month = month_start(today)
+    assignments = await ensure_month_leagues(
+        session,
+        chat_id=message.chat.id,
+        membership_month=current_month,
+        seed_end=today,
+    )
+    await session.commit()
     month_range = period_range(Period.MONTH, today)
     month_stats = await get_user_stats(
         session,
@@ -108,16 +118,22 @@ async def _save_parsed_run(
         user_id=message.from_user.id,
         date_range=month_range,
     )
-    month_ranking = await get_ranking(
-        session,
-        chat_id=message.chat.id,
-        date_range=month_range,
-        limit=1000,
+    league = assignments.get(message.from_user.id)
+    league_ranking = (
+        await get_league_ranking(
+            session,
+            chat_id=message.chat.id,
+            membership_month=current_month,
+            league=league,
+            date_range=month_range,
+        )
+        if league is not None
+        else []
     )
-    month_place = next(
+    league_place = next(
         (
             index
-            for index, entry in enumerate(month_ranking, start=1)
+            for index, entry in enumerate(league_ranking, start=1)
             if entry.user_id == message.from_user.id
         ),
         None,
@@ -128,11 +144,38 @@ async def _save_parsed_run(
             run_date=run.run_date,
             note=parsed.note,
             month_stats=month_stats,
-            month_place=month_place,
-            runners_count=len(month_ranking),
+            league=league,
+            league_place=league_place,
+            league_runners_count=len(league_ranking),
         ),
         reply_markup=top_period_keyboard(Period.MONTH),
     )
+
+
+async def _league_rankings(
+    session: AsyncSession,
+    *,
+    chat_id: int,
+    date_range: DateRange,
+    membership_month: date,
+    seed_end: date,
+) -> dict[League, list[RankingEntry]]:
+    await ensure_month_leagues(
+        session,
+        chat_id=chat_id,
+        membership_month=membership_month,
+        seed_end=seed_end,
+    )
+    return {
+        league: await get_league_ranking(
+            session,
+            chat_id=chat_id,
+            membership_month=membership_month,
+            league=league,
+            date_range=date_range,
+        )
+        for league in League
+    }
 
 
 @router.message(CommandStart())
@@ -144,7 +187,7 @@ async def start(message: Message, settings: Settings) -> None:
         await message.answer(
             "Я считаю километры отдельно для этого чата.\n\n"
             "Добавить пробежку: <code>@runforestsweaty_bot 5.2</code>\n"
-            "Рейтинг: /top\n"
+            "Рейтинг двух лиг за неделю или месяц: /top\n"
             "Моя статистика: /me\n"
             "Отменить последнюю запись: /undo"
         )
@@ -159,9 +202,11 @@ async def help_command(message: Message) -> None:
         "<code>@runforestsweaty_bot 5.2</code>\n"
         "<code>@runforestsweaty_bot 10 утренний парк</code> — с заметкой\n\n"
         "<b>Команды</b>\n"
-        "/top — рейтинг этой группы\n"
-        "/me — моя статистика в этой группе\n"
+        "/top — две лиги за неделю или месяц\n"
+        "/me — моя статистика за неделю и месяц\n"
         "/undo — удалить свою последнюю запись\n\n"
+        "Лиги закрепляются на месяц. Новые участники начинают в «Тропе».\n"
+        "Итоги недели и месяца бот публикует автоматически.\n\n"
         "Поддерживаются точка и запятая: <code>5.2</code> или <code>5,2</code>."
     )
 
@@ -192,20 +237,22 @@ async def _render_top(
     *,
     chat_id: int,
     period: Period,
-    today,
+    today: date,
 ) -> str:
     date_range = period_range(period, today)
-    ranking = await get_ranking(
+    rankings = await _league_rankings(
         session,
         chat_id=chat_id,
+        membership_month=month_start(today),
         date_range=date_range,
+        seed_end=today,
     )
     totals = await get_totals(
         session,
         chat_id=chat_id,
         date_range=date_range,
     )
-    return render_ranking(period=period, ranking=ranking, totals=totals)
+    return render_league_ranking(period=period, rankings=rankings, totals=totals)
 
 
 @router.message(Command("top"))
@@ -244,6 +291,9 @@ async def top_callback(
     except ValueError:
         await callback.answer("Неизвестный период", show_alert=True)
         return
+    if period not in {Period.WEEK, Period.MONTH}:
+        await callback.answer("Теперь доступны неделя и месяц", show_alert=True)
+        return
 
     today = datetime.now(ZoneInfo(settings.bot_timezone)).date()
     text = await _render_top(
@@ -265,25 +315,39 @@ async def me_command(
     if not await _require_group(message, settings) or message.from_user is None:
         return
     today = _local_date(message, settings)
+    current_month = month_start(today)
+    assignments = await ensure_month_leagues(
+        session,
+        chat_id=message.chat.id,
+        membership_month=current_month,
+        seed_end=today,
+    )
+    week = await get_user_stats(
+        session,
+        chat_id=message.chat.id,
+        user_id=message.from_user.id,
+        date_range=period_range(Period.WEEK, today),
+    )
     month = await get_user_stats(
         session,
         chat_id=message.chat.id,
         user_id=message.from_user.id,
         date_range=period_range(Period.MONTH, today),
     )
-    year = await get_user_stats(
-        session,
-        chat_id=message.chat.id,
-        user_id=message.from_user.id,
-        date_range=period_range(Period.YEAR, today),
+    league = assignments.get(message.from_user.id)
+    league_line = (
+        f"{LEAGUE_EMOJI[league]} Лига «{LEAGUE_TITLES[league]}»\n\n"
+        if league is not None
+        else ""
     )
     await message.reply(
         f"👤 <b>{html.escape(_display_name(message))}</b>\n\n"
+        f"{league_line}"
+        f"📅 Эта неделя: <b>{format_km(week.total_km)} км</b> "
+        f"· {pluralize(week.runs_count, 'пробежка', 'пробежки', 'пробежек')}\n"
         f"📊 Этот месяц: <b>{format_km(month.total_km)} км</b> "
         f"· {pluralize(month.runs_count, 'пробежка', 'пробежки', 'пробежек')}\n"
-        f"🗓 Этот год: <b>{format_km(year.total_km)} км</b> "
-        f"· {pluralize(year.runs_count, 'пробежка', 'пробежки', 'пробежек')}\n"
-        f"⚡ Лучшая пробежка: <b>{format_km(year.best_run_km)} км</b>\n\n"
+        f"⚡ Лучшая за месяц: <b>{format_km(month.best_run_km)} км</b>\n\n"
         "🏆 /top · ↩️ /undo"
     )
 

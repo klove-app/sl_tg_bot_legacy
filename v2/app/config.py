@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     max_distance_km: Decimal = Field(default=Decimal("100"), alias="MAX_DISTANCE_KM")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     allowed_chat_ids: str | None = Field(default=None, alias="ALLOWED_CHAT_IDS")
+    summaries_enabled: bool = Field(default=True, alias="SUMMARIES_ENABLED")
+    summary_hour: int = Field(default=9, alias="SUMMARY_HOUR")
+    monthly_summary_minute: int = Field(
+        default=10,
+        alias="MONTHLY_SUMMARY_MINUTE",
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -50,6 +56,20 @@ class Settings(BaseSettings):
     def validate_max_distance(cls, value: Decimal) -> Decimal:
         if value <= 0:
             raise ValueError("MAX_DISTANCE_KM must be positive")
+        return value
+
+    @field_validator("summary_hour")
+    @classmethod
+    def validate_summary_hour(cls, value: int) -> int:
+        if not 0 <= value <= 23:
+            raise ValueError("SUMMARY_HOUR must be between 0 and 23")
+        return value
+
+    @field_validator("monthly_summary_minute")
+    @classmethod
+    def validate_summary_minute(cls, value: int) -> int:
+        if not 0 <= value <= 59:
+            raise ValueError("MONTHLY_SUMMARY_MINUTE must be between 0 and 59")
         return value
 
     @property

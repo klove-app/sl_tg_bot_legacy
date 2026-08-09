@@ -12,6 +12,7 @@ from app.config import get_settings
 from app.db import create_database, create_schema
 from app.handlers import router
 from app.middleware import DatabaseSessionMiddleware
+from app.summaries import stop_summary_task, summary_loop
 
 
 async def run_bot() -> None:
@@ -49,6 +50,10 @@ async def run_bot() -> None:
         )
         await bot.delete_webhook(drop_pending_updates=False)
         logger.info("Starting @%s with long polling", me.username)
+        summary_task = asyncio.create_task(
+            summary_loop(bot, database.sessions, settings),
+            name="runtracker-summaries",
+        )
         await dispatcher.start_polling(
             bot,
             allowed_updates=dispatcher.resolve_used_update_types(),
@@ -56,6 +61,8 @@ async def run_bot() -> None:
             bot_username=me.username or "",
         )
     finally:
+        if "summary_task" in locals():
+            await stop_summary_task(summary_task)
         await bot.session.close()
         await database.engine.dispose()
 

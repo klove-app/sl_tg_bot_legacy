@@ -7,8 +7,6 @@ def top_period_keyboard(active: Period) -> InlineKeyboardMarkup:
     labels = {
         Period.WEEK: "Неделя",
         Period.MONTH: "Месяц",
-        Period.YEAR: "Год",
-        Period.ALL: "Всё время",
     }
     buttons = {
         period: InlineKeyboardButton(
@@ -20,7 +18,6 @@ def top_period_keyboard(active: Period) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [buttons[Period.WEEK], buttons[Period.MONTH]],
-            [buttons[Period.YEAR], buttons[Period.ALL]],
         ]
     )
 
