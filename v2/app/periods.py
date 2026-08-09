@@ -13,6 +13,22 @@ class Period(StrEnum):
     ALL = "all"
 
 
+MONTH_NAMES_NOMINATIVE = (
+    "Январь",
+    "Февраль",
+    "Март",
+    "Апрель",
+    "Май",
+    "Июнь",
+    "Июль",
+    "Август",
+    "Сентябрь",
+    "Октябрь",
+    "Ноябрь",
+    "Декабрь",
+)
+
+
 @dataclass(frozen=True)
 class DateRange:
     start: date | None

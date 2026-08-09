@@ -14,7 +14,15 @@ from app.config import Settings
 from app.keyboards import top_period_keyboard, undo_keyboard
 from app.leagues import LEAGUE_EMOJI, LEAGUE_TITLES, League
 from app.parsing import ParsedRun, RunParseError, parse_run_text
-from app.periods import DateRange, Period, month_start, period_range
+from app.periods import (
+    MONTH_NAMES_NOMINATIVE,
+    DateRange,
+    Period,
+    month_date_range,
+    month_start,
+    period_range,
+    previous_month_start,
+)
 from app.presentation import (
     format_km,
     pluralize,
@@ -148,7 +156,7 @@ async def _save_parsed_run(
             league_place=league_place,
             league_runners_count=len(league_ranking),
         ),
-        reply_markup=top_period_keyboard(Period.MONTH),
+        reply_markup=top_period_keyboard(Period.MONTH, today=today),
     )
 
 
@@ -238,21 +246,42 @@ async def _render_top(
     chat_id: int,
     period: Period,
     today: date,
+    month_offset: int = 0,
 ) -> str:
-    date_range = period_range(period, today)
+    if period is Period.MONTH and month_offset == -1:
+        target_month = previous_month_start(today)
+        date_range = month_date_range(target_month)
+        membership_month = target_month
+    else:
+        date_range = period_range(period, today)
+        membership_month = month_start(today)
     rankings = await _league_rankings(
         session,
         chat_id=chat_id,
-        membership_month=month_start(today),
+        membership_month=membership_month,
         date_range=date_range,
-        seed_end=today,
+        seed_end=date_range.end,
     )
     totals = await get_totals(
         session,
         chat_id=chat_id,
         date_range=date_range,
     )
-    return render_league_ranking(period=period, rankings=rankings, totals=totals)
+    active_rankings = {
+        league: [entry for entry in entries if entry.runs_count > 0]
+        for league, entries in rankings.items()
+    }
+    title = (
+        f"{MONTH_NAMES_NOMINATIVE[membership_month.month - 1]} {membership_month.year}"
+        if period is Period.MONTH
+        else None
+    )
+    return render_league_ranking(
+        period=period,
+        rankings=active_rankings,
+        totals=totals,
+        title=title,
+    )
 
 
 @router.message(Command("top"))
@@ -264,13 +293,17 @@ async def top_command(
     if not await _require_group(message, settings):
         return
     period = Period.MONTH
+    today = _local_date(message, settings)
     text = await _render_top(
         session,
         chat_id=message.chat.id,
         period=period,
-        today=_local_date(message, settings),
+        today=today,
     )
-    await message.answer(text, reply_markup=top_period_keyboard(period))
+    await message.answer(
+        text,
+        reply_markup=top_period_keyboard(period, today=today),
+    )
 
 
 @router.callback_query(F.data.startswith("top:"))
@@ -287,12 +320,17 @@ async def top_callback(
         await callback.answer("Этот чат не включён в список разрешённых.", show_alert=True)
         return
     try:
-        period = Period(callback.data.split(":", 1)[1])
-    except ValueError:
+        parts = callback.data.split(":")
+        period = Period(parts[1])
+        month_offset = int(parts[2]) if len(parts) > 2 else 0
+    except (IndexError, ValueError):
         await callback.answer("Неизвестный период", show_alert=True)
         return
     if period not in {Period.WEEK, Period.MONTH}:
         await callback.answer("Теперь доступны неделя и месяц", show_alert=True)
+        return
+    if month_offset not in {-1, 0}:
+        await callback.answer("Неизвестный месяц", show_alert=True)
         return
 
     today = datetime.now(ZoneInfo(settings.bot_timezone)).date()
@@ -301,8 +339,16 @@ async def top_callback(
         chat_id=callback.message.chat.id,
         period=period,
         today=today,
+        month_offset=month_offset,
     )
-    await callback.message.edit_text(text, reply_markup=top_period_keyboard(period))
+    await callback.message.edit_text(
+        text,
+        reply_markup=top_period_keyboard(
+            period,
+            today=today,
+            month_offset=month_offset,
+        ),
+    )
     await callback.answer()
 
 

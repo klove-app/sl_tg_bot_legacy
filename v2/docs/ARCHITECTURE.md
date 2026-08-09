@@ -35,7 +35,8 @@ Legacy imports use `legacy_log_id` as a second idempotency key.
 
 - `@runforestsweaty_bot <km> [note]`: records a run in the current group
 - `/run <km> [note]`: backwards-compatible alternative
-- `/top`: the two league leaderboards with week/month buttons
+- `/top`: the two league leaderboards for the current week, current month, or
+  previous month
 - `/me`: the caller's week/month statistics and current league
 - `/undo`: soft-deletes the caller's latest active run after confirmation
 - `/help`: usage summary
@@ -68,6 +69,10 @@ remains in «Темп». Runners who join after monthly assignments exist start 
 
 League tables include every assigned runner, including zero-distance rows, while
 the group totals count only runners who recorded a run in the selected period.
+Interactive `/top` tables hide zero-distance rows and name the selected calendar
+month explicitly. The previous-month button makes a run from the prior calendar
+month discoverable instead of displaying that runner as `0 km` in the current
+month. Scheduled summaries still include all assigned participants.
 
 ## Scheduled summaries
 

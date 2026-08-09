@@ -120,15 +120,16 @@ def render_league_ranking(
     rankings: dict[League, list[RankingEntry]],
     totals: Totals,
     limit_per_league: int = 10,
+    title: str | None = None,
 ) -> str:
-    title = PERIOD_TITLES[period]
+    ranking_title = title or PERIOD_TITLES[period]
     active_runners = pluralize(
         totals.runners_count,
         "активный участник",
         "активных участника",
         "активных участников",
     )
-    lines = [f"🏆 <b>Беговой рейтинг · {title}</b>"]
+    lines = [f"🏆 <b>Беговой рейтинг · {ranking_title}</b>"]
     for league in (League.TEMPO, League.TRAIL):
         lines.extend(
             [

@@ -1,9 +1,14 @@
+from datetime import date
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
 
 from app import handlers
+from app.db import create_database, create_schema
+from app.periods import Period
+from app.repository import RunInput, add_run
 
 
 @pytest.mark.asyncio
@@ -53,3 +58,58 @@ async def test_explicit_mention_is_still_processed(monkeypatch) -> None:
     )
 
     save_run.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_top_can_show_previous_month_without_zero_rows_in_current_month() -> None:
+    database = create_database("sqlite+aiosqlite:///:memory:")
+    await create_schema(database.engine)
+    async with database.sessions() as session:
+        await add_run(
+            session,
+            RunInput(
+                chat_id=-100,
+                chat_title="Беговой чат",
+                user_id=1,
+                username="ksenia",
+                display_name="Ксения",
+                telegram_message_id=1,
+                distance_km=Decimal("5.40"),
+                run_date=date(2026, 7, 31),
+            ),
+        )
+        await add_run(
+            session,
+            RunInput(
+                chat_id=-100,
+                chat_title="Беговой чат",
+                user_id=2,
+                username="ivan",
+                display_name="Иван",
+                telegram_message_id=2,
+                distance_km=Decimal("6.00"),
+                run_date=date(2026, 8, 2),
+            ),
+        )
+        await session.commit()
+
+        current = await handlers._render_top(
+            session,
+            chat_id=-100,
+            period=Period.MONTH,
+            today=date(2026, 8, 9),
+        )
+        previous = await handlers._render_top(
+            session,
+            chat_id=-100,
+            period=Period.MONTH,
+            today=date(2026, 8, 9),
+            month_offset=-1,
+        )
+
+    assert "Август 2026" in current
+    assert "Ксения" not in current
+    assert "Июль 2026" in previous
+    assert "Ксения" in previous
+    assert "5,4 км" in previous
+    await database.engine.dispose()
