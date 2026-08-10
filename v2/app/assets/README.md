@@ -8,7 +8,10 @@ style keeps the geography recognisable while making the group journey feel more
 playful in Telegram.
 
 `app/journey.py` resizes the background to 1200×675 and draws the route,
-checkpoint state, current marker, and progress bar from database totals. The map
-is illustrative and must not be used for navigation. A replacement should keep
-the same crop, route corridor, and 16:9 aspect ratio unless the overlay
-coordinates are updated at the same time.
+checkpoint state, current marker, finish flag, level, next quest, and team XP
+bar from database totals. Reached checkpoints become stars and the next curated
+place gets a mint highlight, so the generated image reads like a lightweight
+game board without adding new gameplay state. The map is illustrative and must
+not be used for navigation. A replacement should keep the same crop, route
+corridor, and 16:9 aspect ratio unless the overlay coordinates are updated at
+the same time.

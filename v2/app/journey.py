@@ -423,6 +423,27 @@ def _draw_star(
     draw.polygon(points, fill=fill)
 
 
+def _draw_finish_flag(
+    draw: ImageDraw.ImageDraw,
+    anchor: tuple[int, int],
+) -> None:
+    x, y = anchor
+    draw.line((x, y - 32, x, y + 10), fill=INK, width=4)
+    draw.polygon(
+        [(x + 1, y - 31), (x + 30, y - 23), (x + 1, y - 14)],
+        fill=CORAL,
+        outline=INK,
+    )
+
+
+def _journey_level(progress: JourneyProgress) -> int:
+    return next(
+        index
+        for index, place in reversed(tuple(enumerate(JOURNEY_PLACES, start=1)))
+        if place.distance_km <= progress.total_km
+    )
+
+
 def render_journey_map(progress: JourneyProgress) -> bytes:
     image = _base_map().copy().convert("RGBA")
     overlay = Image.new("RGBA", MAP_SIZE, (0, 0, 0, 0))
@@ -459,6 +480,16 @@ def render_journey_map(progress: JourneyProgress) -> bytes:
         )
         if reached:
             _draw_star(draw, (x, y), radius=5, fill=CORAL)
+
+    if progress.next_place is not None:
+        next_x, next_y = _track_point_at_distance(progress.next_place.distance_km)
+        draw.ellipse(
+            (next_x - 12, next_y - 12, next_x + 12, next_y + 12),
+            outline=MINT,
+            width=4,
+        )
+
+    _draw_finish_flag(draw, (57, 329))
 
     marker_x, marker_y = _point_at_progress(progress)
     draw.polygon(
@@ -510,6 +541,50 @@ def render_journey_map(progress: JourneyProgress) -> bytes:
     draw.text((50, 75), "2,500 KM TOGETHER / 2026", font=_font(15), fill=MINT)
     _draw_star(draw, (397, 51), radius=11, fill=SUN)
 
+    level = _journey_level(progress)
+    draw.rounded_rectangle(
+        (452, 25, 620, 105),
+        radius=20,
+        fill=LAVENDER,
+        outline=INK,
+        width=3,
+    )
+    draw.text((473, 39), "LEVEL", font=_font(14), fill=(255, 249, 225, 255))
+    draw.text(
+        (473, 61),
+        f"{level:02d} / {len(JOURNEY_PLACES):02d}",
+        font=_font(27),
+        fill=(255, 249, 225, 255),
+    )
+
+    draw.rounded_rectangle(
+        (642, 25, 1172, 105),
+        radius=20,
+        fill=CREAM,
+        outline=MINT,
+        width=4,
+    )
+    if progress.next_place is None:
+        draw.text((666, 39), "QUEST COMPLETE!", font=_font(15), fill=CORAL)
+        draw.text((666, 63), "MONT BLANC UNLOCKED", font=_font(25), fill=INK)
+        _draw_star(draw, (1135, 62), radius=15, fill=SUN)
+    else:
+        draw.text((666, 39), "NEXT QUEST", font=_font(14), fill=MINT)
+        draw.text(
+            (666, 63),
+            progress.next_place.map_label,
+            font=_font(23),
+            fill=INK,
+        )
+        remaining_text = f"{progress.remaining_to_next_place_km:.0f} KM"
+        remaining_bbox = draw.textbbox((0, 0), remaining_text, font=_font(19))
+        draw.text(
+            (1144 - (remaining_bbox[2] - remaining_bbox[0]), 65),
+            remaining_text,
+            font=_font(19),
+            fill=CORAL,
+        )
+
     draw.rounded_rectangle(
         (28, 575, 1172, 650),
         radius=22,
@@ -517,7 +592,8 @@ def render_journey_map(progress: JourneyProgress) -> bytes:
         outline=LAVENDER,
         width=4,
     )
-    bar_left, bar_top, bar_right, bar_bottom = 50, 598, 935, 617
+    draw.text((50, 587), "TEAM XP", font=_font(13), fill=MINT)
+    bar_left, bar_top, bar_right, bar_bottom = 145, 589, 935, 610
     draw.rounded_rectangle(
         (bar_left, bar_top, bar_right, bar_bottom),
         radius=10,
@@ -532,7 +608,7 @@ def render_journey_map(progress: JourneyProgress) -> bytes:
             fill=CORAL,
         )
     draw.text(
-        (50, 624),
+        (50, 620),
         f"{progress.total_km:.1f} / {progress.target_km:.0f} KM",
         font=_font(17),
         fill=INK,
