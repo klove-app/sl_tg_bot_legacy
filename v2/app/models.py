@@ -176,3 +176,27 @@ class AchievementAward(Base):
             "reference_date",
         ),
     )
+
+
+class JourneyMilestone(Base):
+    __tablename__ = "runbot_journey_milestones"
+
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    checkpoint_code: Mapped[str] = mapped_column(String(32), primary_key=True)
+    reached_total_km: Mapped[Decimal] = mapped_column(DISTANCE_TYPE, nullable=False)
+    run_id: Mapped[int | None] = mapped_column(RUN_ID_TYPE, nullable=True)
+    reached_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["chat_id"],
+            ["runbot_chats.chat_id"],
+            ondelete="CASCADE",
+        ),
+        Index(
+            "ix_runbot_journey_milestones_chat_year",
+            "chat_id",
+            "year",
+        ),
+    )

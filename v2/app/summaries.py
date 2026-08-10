@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.achievements import get_period_awards, get_sleeping_runners
 from app.config import Settings
+from app.journey import JOURNEY_YEAR, build_journey_progress
 from app.leagues import League
 from app.periods import (
     DateRange,
@@ -25,6 +26,7 @@ from app.presentation import render_period_summary
 from app.repository import (
     ensure_month_leagues,
     get_chat_ids,
+    get_journey_totals,
     get_league_ranking,
     get_totals,
     mark_summary_delivered,
@@ -133,6 +135,14 @@ async def _summary_text(
         if spec.period is Period.MONTH
         else []
     )
+    journey_progress = None
+    if spec.date_range.end.year == JOURNEY_YEAR:
+        journey_totals = await get_journey_totals(
+            session,
+            chat_id=chat_id,
+            through=spec.date_range.end,
+        )
+        journey_progress = build_journey_progress(journey_totals.total_km)
     return (
         render_period_summary(
             period=spec.period,
@@ -141,6 +151,7 @@ async def _summary_text(
             totals=totals,
             awards=awards,
             sleeping_runners=sleeping_runners,
+            journey_progress=journey_progress,
         ),
         totals.runs_count,
     )

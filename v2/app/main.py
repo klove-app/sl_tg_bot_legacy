@@ -13,6 +13,7 @@ from app.config import get_settings
 from app.db import create_database, create_schema
 from app.handlers import router
 from app.middleware import DatabaseSessionMiddleware
+from app.repository import backfill_journey_milestones
 from app.summaries import stop_summary_task, summary_loop
 
 
@@ -29,6 +30,7 @@ async def run_bot() -> None:
     database = create_database(settings.database_url)
     await create_schema(database.engine)
     await backfill_achievements(database.sessions)
+    await backfill_journey_milestones(database.sessions)
 
     bot = Bot(
         token=settings.telegram_bot_token.get_secret_value(),
@@ -44,6 +46,7 @@ async def run_bot() -> None:
         me = await bot.get_me()
         await bot.set_my_commands(
             [
+                BotCommand(command="journey", description="Путь группы к Монблану"),
                 BotCommand(command="top", description="Рейтинг группы"),
                 BotCommand(command="me", description="Моя статистика"),
                 BotCommand(command="undo", description="Удалить последнюю запись"),

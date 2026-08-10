@@ -5,6 +5,7 @@ from datetime import date
 from decimal import Decimal
 
 from app.achievements import AchievementDefinition, AwardView
+from app.journey import JOURNEY_TITLE, JourneyCheckpoint, JourneyProgress
 from app.leagues import LEAGUE_EMOJI, LEAGUE_TITLES, League
 from app.periods import DateRange, Period
 from app.repository import RankingEntry, Totals, UserStats
@@ -54,6 +55,66 @@ def format_run_date(value: date) -> str:
     return f"{value.day} {MONTH_NAMES[value.month - 1]}"
 
 
+def format_percent(value: Decimal) -> str:
+    return f"{value:.1f}".rstrip("0").rstrip(".").replace(".", ",")
+
+
+def journey_progress_lines(
+    progress: JourneyProgress,
+    *,
+    newly_reached: list[JourneyCheckpoint] | None = None,
+    include_title: bool = True,
+) -> list[str]:
+    lines: list[str] = []
+    if include_title:
+        lines.extend(
+            [
+                f"🏔 <b>{JOURNEY_TITLE}</b> · 2026",
+                "Парк Краснодар → Шамони",
+            ]
+        )
+    lines.append(
+        f"🛣 Вместе: <b>{format_km(progress.total_km)} / "
+        f"{format_km(progress.target_km)} км</b> · {format_percent(progress.percent)}%"
+    )
+    if progress.completed:
+        lines.append("🏁 <b>Финиш в Шамони достигнут!</b>")
+        if progress.overage_km > 0:
+            lines.append(f"✨ Сверх цели: <b>{format_km(progress.overage_km)} км</b>")
+    elif progress.next_checkpoint is not None:
+        lines.append(
+            f"📍 Следующая точка: <b>{progress.next_checkpoint.title}</b> · "
+            f"осталось {format_km(progress.remaining_to_next_km)} км"
+        )
+
+    if newly_reached:
+        lines.extend(
+            [
+                "",
+                "🎉 <b>Новая точка маршрута!</b>",
+                *(
+                    f"📌 {checkpoint.title} · {format_km(checkpoint.distance_km)} км"
+                    for checkpoint in newly_reached
+                ),
+            ]
+        )
+    return lines
+
+
+def render_journey_progress(
+    progress: JourneyProgress,
+    *,
+    newly_reached: list[JourneyCheckpoint] | None = None,
+) -> str:
+    return "\n".join(
+        [
+            *journey_progress_lines(progress, newly_reached=newly_reached),
+            "",
+            "🏆 /top · 👤 /me · ↩️ /undo",
+        ]
+    )
+
+
 def render_run_confirmation(
     *,
     distance_km: Decimal,
@@ -64,6 +125,8 @@ def render_run_confirmation(
     league_place: int | None,
     league_runners_count: int,
     new_awards: list[AchievementDefinition] | None = None,
+    journey_progress: JourneyProgress | None = None,
+    new_journey_checkpoints: list[JourneyCheckpoint] | None = None,
 ) -> str:
     lines = [
         "✅ <b>Пробежка записана</b>",
@@ -97,10 +160,21 @@ def render_run_confirmation(
             ]
         )
 
+    if journey_progress is not None:
+        lines.extend(
+            [
+                "",
+                *journey_progress_lines(
+                    journey_progress,
+                    newly_reached=new_journey_checkpoints,
+                ),
+            ]
+        )
+
     lines.extend(
         [
             "",
-            "🏆 /top · 👤 /me · ↩️ /undo",
+            "🗺 /journey · 🏆 /top · 👤 /me · ↩️ /undo",
         ]
     )
     return "\n".join(lines)
@@ -186,6 +260,7 @@ def render_period_summary(
     totals: Totals,
     awards: list[AwardView] | None = None,
     sleeping_runners: list[str] | None = None,
+    journey_progress: JourneyProgress | None = None,
 ) -> str:
     summary_title = "Итоги недели" if period is Period.WEEK else "Итоги месяца"
     active_runners = pluralize(
@@ -214,6 +289,8 @@ def render_period_summary(
             ),
         ]
     )
+    if journey_progress is not None:
+        lines.extend(["", *journey_progress_lines(journey_progress)])
     if awards:
         lines.extend(["", "🎖 <b>Новые награды</b>"])
         lines.extend(

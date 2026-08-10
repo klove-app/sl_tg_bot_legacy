@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import html
 import re
 from datetime import UTC, date, datetime
@@ -7,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import BufferedInputFile, CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.achievements import (
@@ -16,6 +17,13 @@ from app.achievements import (
     get_user_awards,
 )
 from app.config import Settings
+from app.journey import (
+    JOURNEY_YEAR,
+    build_journey_progress,
+    checkpoint_by_code,
+    crossed_checkpoints,
+    render_journey_map,
+)
 from app.keyboards import top_period_keyboard, undo_keyboard
 from app.leagues import LEAGUE_EMOJI, LEAGUE_TITLES, League
 from app.parsing import ParsedRun, RunParseError, parse_run_text
@@ -31,6 +39,7 @@ from app.periods import (
 from app.presentation import (
     format_km,
     pluralize,
+    render_journey_progress,
     render_league_ranking,
     render_run_confirmation,
 )
@@ -38,7 +47,9 @@ from app.repository import (
     RankingEntry,
     RunInput,
     add_run,
+    claim_journey_milestones,
     ensure_month_leagues,
+    get_journey_totals,
     get_latest_active_run,
     get_league_ranking,
     get_totals,
@@ -85,6 +96,29 @@ def _display_name(message: Message) -> str:
     return message.from_user.full_name[:255]
 
 
+async def _send_journey_map(
+    message: Message,
+    *,
+    progress,
+    caption: str,
+    reply_markup=None,
+    reply: bool = False,
+) -> None:
+    image_bytes = await asyncio.to_thread(render_journey_map, progress)
+    photo = BufferedInputFile(image_bytes, filename="kuban-to-mont-blanc.png")
+    method = message.reply_photo if reply else message.answer_photo
+    if len(caption) <= 1024:
+        await method(photo=photo, caption=caption, reply_markup=reply_markup)
+        return
+
+    await method(
+        photo=photo,
+        caption=render_journey_progress(progress),
+        reply_markup=reply_markup,
+    )
+    await message.answer(caption)
+
+
 async def _save_parsed_run(
     message: Message,
     parsed: ParsedRun,
@@ -128,7 +162,29 @@ async def _save_parsed_run(
         chat_id=message.chat.id,
         user_id=message.from_user.id,
     )
+    journey_totals = await get_journey_totals(
+        session,
+        chat_id=message.chat.id,
+        through=today,
+    )
+    checkpoint_candidates = (
+        crossed_checkpoints(
+            journey_totals.total_km - run.distance_km,
+            journey_totals.total_km,
+        )
+        if run.run_date.year == JOURNEY_YEAR
+        else ()
+    )
+    claimed_codes = await claim_journey_milestones(
+        session,
+        chat_id=message.chat.id,
+        checkpoint_codes=[checkpoint.code for checkpoint in checkpoint_candidates],
+        reached_total_km=journey_totals.total_km,
+        run_id=run.id,
+    )
     await session.commit()
+    journey_progress = build_journey_progress(journey_totals.total_km)
+    new_journey_checkpoints = [checkpoint_by_code(code) for code in claimed_codes]
     month_range = period_range(Period.MONTH, today)
     month_stats = await get_user_stats(
         session,
@@ -156,8 +212,10 @@ async def _save_parsed_run(
         ),
         None,
     )
-    await message.reply(
-        render_run_confirmation(
+    await _send_journey_map(
+        message,
+        progress=journey_progress,
+        caption=render_run_confirmation(
             distance_km=parsed.distance_km,
             run_date=run.run_date,
             note=parsed.note,
@@ -166,8 +224,11 @@ async def _save_parsed_run(
             league_place=league_place,
             league_runners_count=len(league_ranking),
             new_awards=new_awards,
+            journey_progress=journey_progress,
+            new_journey_checkpoints=new_journey_checkpoints,
         ),
         reply_markup=top_period_keyboard(Period.MONTH, today=today),
+        reply=True,
     )
 
 
@@ -207,6 +268,7 @@ async def start(message: Message, settings: Settings) -> None:
             "Я считаю километры отдельно для этого чата.\n\n"
             "Добавить пробежку: <code>@runforestsweaty_bot 5.2</code>\n"
             "Рейтинг двух лиг за неделю или месяц: /top\n"
+            "Путь группы к Монблану: /journey\n"
             "Моя статистика: /me\n"
             "Отменить последнюю запись: /undo"
         )
@@ -221,6 +283,7 @@ async def help_command(message: Message) -> None:
         "<code>@runforestsweaty_bot 5.2</code>\n"
         "<code>@runforestsweaty_bot 10 утренний парк</code> — с заметкой\n\n"
         "<b>Команды</b>\n"
+        "/journey — общая карта пути к Монблану\n"
         "/top — две лиги за неделю или месяц\n"
         "/me — моя статистика за неделю и месяц\n"
         "/undo — удалить свою последнюю запись\n\n"
@@ -249,6 +312,28 @@ async def add_run_command(
         await message.reply(f"⚠️ {html.escape(str(exc))}")
         return
     await _save_parsed_run(message, parsed, session, settings)
+
+
+@router.message(Command("journey"))
+async def journey_command(
+    message: Message,
+    session: AsyncSession,
+    settings: Settings,
+) -> None:
+    if not await _require_group(message, settings):
+        return
+    today = _local_date(message, settings)
+    totals = await get_journey_totals(
+        session,
+        chat_id=message.chat.id,
+        through=today,
+    )
+    progress = build_journey_progress(totals.total_km)
+    await _send_journey_map(
+        message,
+        progress=progress,
+        caption=render_journey_progress(progress),
+    )
 
 
 async def _render_top(
@@ -489,6 +574,18 @@ async def undo_callback(
     await session.commit()
     await callback.message.edit_text(
         f"🗑 Запись на <b>{format_km(run.distance_km)} км</b> удалена."
+    )
+    today = datetime.now(ZoneInfo(settings.bot_timezone)).date()
+    totals = await get_journey_totals(
+        session,
+        chat_id=callback.message.chat.id,
+        through=today,
+    )
+    progress = build_journey_progress(totals.total_km)
+    await _send_journey_map(
+        callback.message,
+        progress=progress,
+        caption="↩️ <b>Маршрут пересчитан</b>\n\n" + render_journey_progress(progress),
     )
     await callback.answer()
 

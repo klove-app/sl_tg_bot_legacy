@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from app.achievements import ACHIEVEMENT_BY_CODE, AwardView
+from app.journey import JOURNEY_CHECKPOINTS, build_journey_progress
 from app.leagues import League
 from app.periods import Period, period_range
 from app.presentation import (
@@ -40,6 +41,8 @@ def test_render_run_confirmation_contains_stats_rank_and_commands() -> None:
         league_place=2,
         league_runners_count=8,
         new_awards=[ACHIEVEMENT_BY_CODE["club_5"]],
+        journey_progress=build_journey_progress(Decimal("505.00")),
+        new_journey_checkpoints=[JOURNEY_CHECKPOINTS[1]],
     )
 
     assert "<b>6,03 км</b> · 30 июля" in text
@@ -47,7 +50,11 @@ def test_render_run_confirmation_contains_stats_rank_and_commands() -> None:
     assert "Лига «Тропа»: <b>№2</b> из 8" in text
     assert "🎖 <b>Новые награды</b>" in text
     assert "🔵 Клуб 5 км" in text
-    assert "/top · 👤 /me · ↩️ /undo" in text
+    assert "Из Кубани к Монблану" in text
+    assert "505 / 2500 км" in text
+    assert "Новая точка маршрута" in text
+    assert "/journey · 🏆 /top · 👤 /me · ↩️ /undo" in text
+    assert len(text) <= 1024
 
 
 def test_render_ranking_has_clean_rows_and_totals() -> None:

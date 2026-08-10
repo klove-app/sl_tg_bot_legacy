@@ -10,7 +10,10 @@ from app.periods import Period, period_range
 from app.repository import (
     RunInput,
     add_run,
+    backfill_journey_milestones,
+    claim_journey_milestones,
     ensure_month_leagues,
+    get_journey_totals,
     get_league_ranking,
     get_ranking,
     get_totals,
@@ -157,6 +160,93 @@ async def test_soft_delete_updates_stats_and_checks_owner(database) -> None:
     assert deleted is not None
     assert stats.total_km == Decimal("0.00")
     assert stats.runs_count == 0
+
+
+@pytest.mark.asyncio
+async def test_journey_totals_and_milestones_are_isolated_and_idempotent(database) -> None:
+    async with database.sessions() as session:
+        first, _ = await add_run(
+            session,
+            run_input(chat_id=1, user_id=10, message_id=1, distance="490.00"),
+        )
+        second, _ = await add_run(
+            session,
+            run_input(chat_id=1, user_id=10, message_id=2, distance="15.00"),
+        )
+        await add_run(
+            session,
+            run_input(chat_id=2, user_id=10, message_id=1, distance="900.00"),
+        )
+        await add_run(
+            session,
+            run_input(
+                chat_id=1,
+                user_id=10,
+                message_id=3,
+                distance="300.00",
+                run_date=date(2025, 12, 31),
+            ),
+        )
+        totals = await get_journey_totals(
+            session,
+            chat_id=1,
+            through=date(2026, 12, 31),
+        )
+        first_claim = await claim_journey_milestones(
+            session,
+            chat_id=1,
+            checkpoint_codes=["black_sea"],
+            reached_total_km=totals.total_km,
+            run_id=second.id,
+        )
+        duplicate_claim = await claim_journey_milestones(
+            session,
+            chat_id=1,
+            checkpoint_codes=["black_sea"],
+            reached_total_km=totals.total_km,
+            run_id=second.id,
+        )
+        await soft_delete_owned_run(
+            session,
+            run_id=second.id,
+            chat_id=1,
+            user_id=10,
+        )
+        await session.commit()
+        after_undo = await get_journey_totals(
+            session,
+            chat_id=1,
+            through=date(2026, 12, 31),
+        )
+
+    assert first.id is not None
+    assert totals.total_km == Decimal("505.00")
+    assert first_claim == ["black_sea"]
+    assert duplicate_claim == []
+    assert after_undo.total_km == Decimal("490.00")
+
+
+@pytest.mark.asyncio
+async def test_journey_backfill_silently_reserves_old_checkpoints(database) -> None:
+    async with database.sessions() as session:
+        run, _ = await add_run(
+            session,
+            run_input(chat_id=1, user_id=10, message_id=1, distance="600.00"),
+        )
+        await session.commit()
+
+    await backfill_journey_milestones(database.sessions)
+
+    async with database.sessions() as session:
+        repeated = await claim_journey_milestones(
+            session,
+            chat_id=1,
+            checkpoint_codes=["black_sea"],
+            reached_total_km=Decimal("600.00"),
+            run_id=run.id,
+        )
+
+    assert repeated == []
 
 
 @pytest.mark.asyncio

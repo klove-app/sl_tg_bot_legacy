@@ -1,6 +1,6 @@
 # RunTracker Bot v2 — architecture
 
-Last updated: 2026-08-09
+Last updated: 2026-08-10
 
 ## Product boundary
 
@@ -29,6 +29,8 @@ permits only one active long-polling consumer.
 - `runbot_summary_deliveries`: idempotency ledger for scheduled chat summaries
 - `runbot_achievement_awards`: permanent, idempotent runner medals with the date
   on which each condition was first met
+- `runbot_journey_milestones`: one-time per-chat checkpoint announcements for
+  the 2026 group journey
 
 `(chat_id, telegram_message_id)` is unique, making delivery retries idempotent.
 Legacy imports use `legacy_log_id` as a second idempotency key.
@@ -37,6 +39,7 @@ Legacy imports use `legacy_log_id` as a second idempotency key.
 
 - `@runforestsweaty_bot <km> [note]`: records a run in the current group
 - `/run <km> [note]`: backwards-compatible alternative
+- `/journey`: renders the current group route from Krasnodar to Chamonix
 - `/top`: the two league leaderboards for the current week, current month, or
   previous month
 - `/me`: the caller's week/month statistics and current league
@@ -51,9 +54,10 @@ foreign key is satisfied consistently on PostgreSQL.
 
 Successful run replies show the recorded distance and date, optional note,
 month-to-date distance and run count, current monthly leaderboard position, and
-shortcuts to `/top`, `/me`, and `/undo`. The same period buttons used by `/top`
-are attached to the confirmation. Leaderboards show one compact row per runner
-plus group runner, run, and distance totals.
+shortcuts to `/journey`, `/top`, `/me`, and `/undo`. The reply is attached to a
+locally rendered PNG journey map. The same period buttons used by `/top` are
+attached to the confirmation. Leaderboards show one compact row per runner plus
+group runner, run, and distance totals.
 
 Newly earned medals are appended to the successful run reply. `/me` shows the
 runner's dynamic activity title and all permanent medals. Existing run history
@@ -111,10 +115,27 @@ The bot runs a lightweight scheduler alongside long polling. It publishes:
   `MONTHLY_SUMMARY_MINUTE` (09:10 by default)
 
 Both summaries show every participant in both leagues, new achievements, and
-group totals. Monthly summaries also show league titles and sleeping cells. Empty
-periods are recorded but not posted. `runbot_summary_deliveries` prevents a
-restart from duplicating a summary. The service remains single-replica because
-both Telegram polling and summary delivery assume one active process.
+group totals. Summaries ending in 2026 also include year-to-date journey progress.
+Monthly summaries also show league titles and sleeping cells. Empty periods are
+recorded but not posted. `runbot_summary_deliveries` prevents a restart from
+duplicating a summary. The service remains single-replica because both Telegram
+polling and summary delivery assume one active process.
+
+## 2026 group journey
+
+The journey is fixed at 2,500 km and scoped independently by `chat_id`. It counts
+active `runbot_runs` dated from 2026-01-01 through 2026-12-31. Soft-deleted runs,
+other chats, and activity outside 2026 never affect the route. The product route
+is Park Krasnodar → Black Sea → Carpathians → Danube → Alps → Chamonix / Mont
+Blanc, with checkpoints every 500 km.
+
+The PNG is generated deterministically with Pillow inside the polling service;
+there is no external image or maps API. A run may cross multiple checkpoints.
+Their composite key `(chat_id, year, checkpoint_code)` makes announcements
+idempotent across retries and restarts. Startup backfill records checkpoints
+already covered by historical 2026 runs without sending retroactive messages.
+`/undo` recomputes the map from active run facts, while a historical milestone
+remains an audit record that the group reached it once.
 
 ## Time
 
