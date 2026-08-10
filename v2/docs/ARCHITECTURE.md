@@ -127,12 +127,13 @@ The journey is fixed at 2,500 km and scoped independently by `chat_id`. It count
 active `runbot_runs` dated from 2026-01-01 through 2026-12-31. Soft-deleted runs,
 other chats, and activity outside 2026 never affect the route. The product route
 is Park Krasnodar → Black Sea → Carpathians → Danube → Alps → Chamonix / Mont
-Blanc, with checkpoints every 500 km.
+Blanc. Chapter distances follow the same scaled geographic anchor line as the
+dense route marks.
 
 The PNG is generated deterministically with Pillow inside the polling service;
-there is no external image or maps API. A bundled, dark topographic illustration
-provides the terrain background, while the route, reached checkpoints, current
-marker, and progress bar are drawn from live database totals. The background is
+there is no external image or maps API. A bundled cartoon atlas provides the
+terrain background, while the route, reached checkpoints, current marker, game
+HUD, and progress bar are drawn from live database totals. The background is
 illustrative rather than suitable for navigation. A run may cross multiple
 checkpoints.
 Their composite key `(chat_id, year, checkpoint_code)` makes announcements
@@ -143,11 +144,17 @@ remains an audit record that the group reached it once.
 
 Sixteen curated travel stops add nearby settlements, landmarks, and short facts
 between the six major checkpoints. `JourneyProgress` derives the current and next
-stop from total kilometres. Every run confirmation and `/journey` show the current
-place, its fact, and distance to the next stop; the PNG adds small stop dots and a
-callout at the live marker. First arrivals use `place:<code>` keys in the same
-milestone ledger, so restart and Telegram retries cannot repeat them. The facts,
-narrative distances, and source links are owned by
+story stop from total kilometres. First arrivals use `place:<code>` keys in the
+same milestone ledger, so restart and Telegram retries cannot repeat them.
+
+Separately, `journey-waypoints-2026.json` supplies 201 route marks every 12.5 km.
+Each mark is paired ahead of time with the nearest populated place from the
+GeoNames `cities500` export. Every run confirmation and `/journey` show the
+current and next dense mark, while the major story stop still supplies the fact
+and level. Dense marks never create milestone rows or Telegram announcements.
+This keeps runtime deterministic and API-free while ensuring no displayed
+location can remain stale for more than 12.5 challenge kilometres. The facts,
+narrative distances, data attribution, and source links are owned by
 [`docs/JOURNEY-PLACES.md`](JOURNEY-PLACES.md).
 
 ## Time

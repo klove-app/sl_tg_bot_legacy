@@ -54,7 +54,8 @@ def test_render_run_confirmation_contains_stats_rank_and_commands() -> None:
     assert "Из Кубани к Монблану" in text
     assert "505 / 2500 км" in text
     assert "Новая точка маршрута" in text
-    assert "Сейчас рядом: <b>Керчь</b>" in text
+    assert "Сейчас рядом: <b>Tomyna Balka</b>" in text
+    assert "Большая остановка: <b>Керчь</b>" in text
     assert "более 2 600 лет" in text
     assert "/journey · 🏆 /top · 👤 /me · ↩️ /undo" in text
     assert len(text) <= 1024

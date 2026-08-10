@@ -84,8 +84,18 @@ def journey_progress_lines(
             lines.append(f"✨ Сверх цели: <b>{format_km(progress.overage_km)} км</b>")
     elif progress.next_checkpoint is not None:
         lines.append(
-            f"📍 Следующая точка: <b>{progress.next_checkpoint.title}</b> · "
+            f"📖 Следующая глава: <b>{progress.next_checkpoint.title}</b> · "
             f"осталось {format_km(progress.remaining_to_next_km)} км"
+        )
+
+    lines.append(
+        f"📍 Сейчас рядом: <b>{html.escape(progress.current_waypoint.title)}</b> · "
+        f"{format_km(progress.current_waypoint.distance_km)} км маршрута"
+    )
+    if progress.next_waypoint is not None:
+        lines.append(
+            f"🎯 Через {format_km(progress.remaining_to_next_waypoint_km)} км: "
+            f"<b>{html.escape(progress.next_waypoint.title)}</b>"
         )
 
     if newly_reached_places:
@@ -95,13 +105,13 @@ def journey_progress_lines(
     else:
         lines.extend(
             [
-                f"🧭 Сейчас рядом: <b>{progress.current_place.title}</b>",
+                f"🧭 Большая остановка: <b>{progress.current_place.title}</b>",
                 f"💡 {progress.current_place.fact}",
             ]
         )
     if progress.next_place is not None:
         lines.append(
-            f"Дальше: {progress.next_place.title} · "
+            f"Большая цель: {progress.next_place.title} · "
             f"{format_km(progress.remaining_to_next_place_km)} км"
         )
 
