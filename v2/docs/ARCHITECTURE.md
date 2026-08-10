@@ -130,7 +130,10 @@ is Park Krasnodar → Black Sea → Carpathians → Danube → Alps → Chamonix
 Blanc, with checkpoints every 500 km.
 
 The PNG is generated deterministically with Pillow inside the polling service;
-there is no external image or maps API. A run may cross multiple checkpoints.
+there is no external image or maps API. A bundled, dark topographic illustration
+provides the terrain background, while the route, reached checkpoints, current
+marker, and progress bar are drawn from live database totals. The background is
+illustrative rather than suitable for navigation. A run may cross multiple checkpoints.
 Their composite key `(chat_id, year, checkpoint_code)` makes announcements
 idempotent across retries and restarts. Startup backfill records checkpoints
 already covered by historical 2026 runs without sending retroactive messages.

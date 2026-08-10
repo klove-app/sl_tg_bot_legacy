@@ -2,13 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+from functools import lru_cache
 from io import BytesIO
+from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 JOURNEY_YEAR = 2026
 JOURNEY_TITLE = "Из Кубани к Монблану"
 JOURNEY_TARGET_KM = Decimal("2500")
+MAP_SIZE = (1200, 675)
+MAP_ASSET_PATH = Path(__file__).with_name("assets") / "journey-map-base.png"
 
 
 @dataclass(frozen=True)
@@ -42,43 +46,67 @@ JOURNEY_CHECKPOINTS = (
         distance_km=Decimal("0"),
         title="Парк Краснодар",
         map_label="KRASNODAR",
-        point=(1050, 405),
+        point=(1162, 345),
     ),
     JourneyCheckpoint(
         code="black_sea",
         distance_km=Decimal("500"),
         title="Чёрное море",
         map_label="BLACK SEA",
-        point=(890, 440),
+        point=(973, 350),
     ),
     JourneyCheckpoint(
         code="carpathians",
         distance_km=Decimal("1000"),
         title="Карпаты",
         map_label="CARPATHIANS",
-        point=(690, 300),
+        point=(670, 330),
     ),
     JourneyCheckpoint(
         code="danube",
         distance_km=Decimal("1500"),
         title="Дунай",
         map_label="DANUBE",
-        point=(505, 345),
+        point=(490, 300),
     ),
     JourneyCheckpoint(
         code="alps",
         distance_km=Decimal("2000"),
         title="Альпы",
         map_label="ALPS",
-        point=(315, 260),
+        point=(270, 330),
     ),
     JourneyCheckpoint(
         code="chamonix",
         distance_km=JOURNEY_TARGET_KM,
         title="Шамони · Монблан",
         map_label="CHAMONIX",
-        point=(155, 365),
+        point=(90, 326),
     ),
+)
+
+ROUTE_TRACK = (
+    (Decimal("0"), (1162, 345)),
+    (Decimal("125"), (1125, 340)),
+    (Decimal("250"), (1080, 344)),
+    (Decimal("375"), (1030, 340)),
+    (Decimal("500"), (973, 350)),
+    (Decimal("625"), (910, 365)),
+    (Decimal("750"), (845, 355)),
+    (Decimal("875"), (770, 345)),
+    (Decimal("1000"), (670, 330)),
+    (Decimal("1125"), (620, 327)),
+    (Decimal("1250"), (575, 315)),
+    (Decimal("1375"), (535, 310)),
+    (Decimal("1500"), (490, 300)),
+    (Decimal("1625"), (440, 303)),
+    (Decimal("1750"), (385, 320)),
+    (Decimal("1875"), (330, 317)),
+    (Decimal("2000"), (270, 330)),
+    (Decimal("2125"), (220, 337)),
+    (Decimal("2250"), (170, 325)),
+    (Decimal("2375"), (125, 330)),
+    (JOURNEY_TARGET_KM, (90, 326)),
 )
 
 
@@ -139,27 +167,39 @@ def _font(size: int):
     return ImageFont.load_default(size=size)
 
 
+@lru_cache(maxsize=1)
+def _base_map() -> Image.Image:
+    with Image.open(MAP_ASSET_PATH) as source:
+        return ImageOps.fit(
+            source.convert("RGB"),
+            MAP_SIZE,
+            method=Image.Resampling.LANCZOS,
+        )
+
+
 def _point_at_progress(progress: JourneyProgress) -> tuple[int, int]:
     distance = min(progress.total_km, progress.target_km)
     if distance >= progress.target_km:
-        return JOURNEY_CHECKPOINTS[-1].point
-    for start, end in zip(JOURNEY_CHECKPOINTS, JOURNEY_CHECKPOINTS[1:], strict=False):
-        if distance <= end.distance_km:
-            span = end.distance_km - start.distance_km
-            ratio = float((distance - start.distance_km) / span)
+        return ROUTE_TRACK[-1][1]
+    for start, end in zip(ROUTE_TRACK, ROUTE_TRACK[1:], strict=False):
+        start_distance, start_point = start
+        end_distance, end_point = end
+        if distance <= end_distance:
+            span = end_distance - start_distance
+            ratio = float((distance - start_distance) / span)
             return (
-                round(start.point[0] + (end.point[0] - start.point[0]) * ratio),
-                round(start.point[1] + (end.point[1] - start.point[1]) * ratio),
+                round(start_point[0] + (end_point[0] - start_point[0]) * ratio),
+                round(start_point[1] + (end_point[1] - start_point[1]) * ratio),
             )
-    return JOURNEY_CHECKPOINTS[-1].point
+    return ROUTE_TRACK[-1][1]
 
 
 def _travelled_polyline(progress: JourneyProgress) -> list[tuple[int, int]]:
     distance = min(progress.total_km, progress.target_km)
-    points = [JOURNEY_CHECKPOINTS[0].point]
-    for checkpoint in JOURNEY_CHECKPOINTS[1:]:
-        if checkpoint.distance_km <= distance:
-            points.append(checkpoint.point)
+    points = [ROUTE_TRACK[0][1]]
+    for track_distance, point in ROUTE_TRACK[1:]:
+        if track_distance <= distance:
+            points.append(point)
         else:
             points.append(_point_at_progress(progress))
             break
@@ -167,90 +207,82 @@ def _travelled_polyline(progress: JourneyProgress) -> list[tuple[int, int]]:
 
 
 def render_journey_map(progress: JourneyProgress) -> bytes:
-    image = Image.new("RGB", (1200, 675), "#081b1a")
-    draw = ImageDraw.Draw(image)
+    image = _base_map().copy().convert("RGBA")
+    overlay = Image.new("RGBA", MAP_SIZE, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
 
-    draw.rounded_rectangle((35, 28, 1165, 647), radius=32, fill="#102a27")
-    draw.text((75, 62), "KUBAN TO MONT BLANC", font=_font(36), fill="#f5f1df")
-    draw.text(
-        (75, 108),
-        "2,500 KM TOGETHER / 2026",
-        font=_font(20),
-        fill="#8fd3b1",
-    )
-
-    map_box = (70, 165, 1130, 505)
-    draw.rounded_rectangle(map_box, radius=26, fill="#153b35", outline="#2b5b50", width=2)
-    for x in range(160, 1130, 145):
-        draw.line((x, 185, x - 65, 485), fill="#1e4942", width=1)
-    for y in range(215, 490, 65):
-        draw.line((90, y, 1110, y - 18), fill="#1e4942", width=1)
-
-    draw.ellipse((780, 300, 1060, 520), fill="#123d46", outline="#267080", width=2)
-    draw.polygon(
-        [(75, 430), (220, 285), (320, 365), (405, 230), (540, 405), (75, 505)],
-        fill="#1b463c",
-    )
-    draw.polygon(
-        [(90, 445), (220, 315), (275, 382), (405, 255), (505, 415)],
-        fill="#2e6250",
-    )
-
-    route_points = [checkpoint.point for checkpoint in JOURNEY_CHECKPOINTS]
-    draw.line(route_points, fill="#6d8078", width=10, joint="curve")
+    route_points = [point for _, point in ROUTE_TRACK]
+    draw.line(route_points, fill=(3, 8, 8, 190), width=13, joint="curve")
+    draw.line(route_points, fill=(190, 195, 191, 255), width=7, joint="curve")
     travelled = _travelled_polyline(progress)
     if len(travelled) > 1:
-        draw.line(travelled, fill="#66e29c", width=12, joint="curve")
+        draw.line(travelled, fill=(3, 8, 8, 190), width=14, joint="curve")
+        draw.line(travelled, fill=(255, 95, 69, 255), width=8, joint="curve")
 
-    for index, checkpoint in enumerate(JOURNEY_CHECKPOINTS):
+    for checkpoint in JOURNEY_CHECKPOINTS:
         x, y = checkpoint.point
         reached = checkpoint.distance_km <= progress.total_km
-        fill = "#66e29c" if reached else "#d5ddcf"
-        draw.ellipse((x - 10, y - 10, x + 10, y + 10), fill=fill, outline="#081b1a", width=3)
-        label_y = y - 47 if index % 2 == 0 else y + 20
-        draw.text((x - 44, label_y), checkpoint.map_label, font=_font(14), fill="#f5f1df")
-        draw.text(
-            (x - 26, label_y + 17),
-            f"{int(checkpoint.distance_km)} KM",
-            font=_font(12),
-            fill="#9db4aa",
+        fill = (255, 95, 69, 255) if reached else (205, 210, 207, 255)
+        draw.ellipse(
+            (x - 8, y - 8, x + 8, y + 8),
+            fill=fill,
+            outline=(248, 245, 235, 255),
+            width=4,
         )
 
     marker_x, marker_y = _point_at_progress(progress)
     draw.ellipse(
-        (marker_x - 19, marker_y - 19, marker_x + 19, marker_y + 19),
-        fill="#ffca58",
-        outline="#fff3c4",
-        width=5,
+        (marker_x - 17, marker_y - 17, marker_x + 17, marker_y + 17),
+        fill=(255, 95, 69, 255),
+        outline=(255, 250, 239, 255),
+        width=6,
     )
 
-    bar_left, bar_top, bar_right, bar_bottom = 75, 555, 1125, 588
+    draw.rounded_rectangle(
+        (28, 25, 430, 105),
+        radius=20,
+        fill=(3, 10, 10, 205),
+        outline=(255, 255, 255, 35),
+        width=1,
+    )
+    draw.text((50, 42), "KUBAN TO MONT BLANC", font=_font(26), fill="#f8f5eb")
+    draw.text((50, 75), "2,500 KM TOGETHER / 2026", font=_font(15), fill="#bac5bf")
+
+    draw.rounded_rectangle(
+        (28, 575, 1172, 650),
+        radius=22,
+        fill=(3, 10, 10, 215),
+        outline=(255, 255, 255, 35),
+        width=1,
+    )
+    bar_left, bar_top, bar_right, bar_bottom = 50, 598, 935, 617
     draw.rounded_rectangle(
         (bar_left, bar_top, bar_right, bar_bottom),
-        radius=16,
-        fill="#29423d",
+        radius=10,
+        fill=(83, 92, 88, 235),
     )
     ratio = min(1.0, float(progress.total_km / progress.target_km))
     fill_right = bar_left + round((bar_right - bar_left) * ratio)
     if fill_right > bar_left:
         draw.rounded_rectangle(
             (bar_left, bar_top, fill_right, bar_bottom),
-            radius=16,
-            fill="#66e29c",
+            radius=10,
+            fill=(255, 95, 69, 255),
         )
     draw.text(
-        (75, 603),
+        (50, 624),
         f"{progress.total_km:.1f} / {progress.target_km:.0f} KM",
-        font=_font(22),
-        fill="#f5f1df",
+        font=_font(17),
+        fill="#f8f5eb",
     )
     draw.text(
-        (1020, 603),
+        (1025, 601),
         f"{progress.percent:.1f}%",
-        font=_font(22),
-        fill="#ffca58",
+        font=_font(23),
+        fill="#ff735c",
     )
 
+    image = Image.alpha_composite(image, overlay).convert("RGB")
     output = BytesIO()
     image.save(output, format="PNG", optimize=True)
     return output.getvalue()
