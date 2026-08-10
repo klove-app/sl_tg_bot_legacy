@@ -133,12 +133,22 @@ The PNG is generated deterministically with Pillow inside the polling service;
 there is no external image or maps API. A bundled, dark topographic illustration
 provides the terrain background, while the route, reached checkpoints, current
 marker, and progress bar are drawn from live database totals. The background is
-illustrative rather than suitable for navigation. A run may cross multiple checkpoints.
+illustrative rather than suitable for navigation. A run may cross multiple
+checkpoints.
 Their composite key `(chat_id, year, checkpoint_code)` makes announcements
 idempotent across retries and restarts. Startup backfill records checkpoints
 already covered by historical 2026 runs without sending retroactive messages.
 `/undo` recomputes the map from active run facts, while a historical milestone
 remains an audit record that the group reached it once.
+
+Sixteen curated travel stops add nearby settlements, landmarks, and short facts
+between the six major checkpoints. `JourneyProgress` derives the current and next
+stop from total kilometres. Every run confirmation and `/journey` show the current
+place, its fact, and distance to the next stop; the PNG adds small stop dots and a
+callout at the live marker. First arrivals use `place:<code>` keys in the same
+milestone ledger, so restart and Telegram retries cannot repeat them. The facts,
+narrative distances, and source links are owned by
+[`docs/JOURNEY-PLACES.md`](JOURNEY-PLACES.md).
 
 ## Time
 

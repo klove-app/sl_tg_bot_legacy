@@ -2,12 +2,13 @@ from datetime import date
 from decimal import Decimal
 
 from app.achievements import ACHIEVEMENT_BY_CODE, AwardView
-from app.journey import JOURNEY_CHECKPOINTS, build_journey_progress
+from app.journey import JOURNEY_CHECKPOINTS, JOURNEY_PLACES, build_journey_progress
 from app.leagues import League
 from app.periods import Period, period_range
 from app.presentation import (
     format_km,
     pluralize,
+    render_journey_progress,
     render_league_ranking,
     render_period_summary,
     render_ranking,
@@ -53,8 +54,22 @@ def test_render_run_confirmation_contains_stats_rank_and_commands() -> None:
     assert "Из Кубани к Монблану" in text
     assert "505 / 2500 км" in text
     assert "Новая точка маршрута" in text
+    assert "Сейчас рядом: <b>Керчь</b>" in text
+    assert "более 2 600 лет" in text
     assert "/journey · 🏆 /top · 👤 /me · ↩️ /undo" in text
     assert len(text) <= 1024
+
+
+def test_new_travel_stop_is_announced_with_its_fact_once() -> None:
+    place = JOURNEY_PLACES[4]
+    text = render_journey_progress(
+        build_journey_progress(Decimal("830.00")),
+        newly_reached_places=[place],
+    )
+
+    assert "Новая остановка на маршруте" in text
+    assert "<b>Бутучены · Старый Орхей</b>" in text
+    assert text.count(place.fact) == 1
 
 
 def test_render_ranking_has_clean_rows_and_totals() -> None:

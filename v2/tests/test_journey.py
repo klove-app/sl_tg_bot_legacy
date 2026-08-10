@@ -6,6 +6,7 @@ from PIL import Image
 from app.journey import (
     build_journey_progress,
     crossed_checkpoints,
+    crossed_places,
     render_journey_map,
 )
 
@@ -19,6 +20,10 @@ def test_progress_points_to_next_checkpoint() -> None:
     assert progress.next_checkpoint.code == "carpathians"
     assert progress.remaining_to_next_km == Decimal("125.80")
     assert progress.remaining_to_finish_km == Decimal("1625.80")
+    assert progress.current_place.code == "butuceni"
+    assert progress.next_place is not None
+    assert progress.next_place.code == "viscri"
+    assert progress.remaining_to_next_place_km == Decimal("175.80")
 
 
 def test_crossing_can_unlock_multiple_checkpoints() -> None:
@@ -31,6 +36,12 @@ def test_crossing_can_unlock_multiple_checkpoints() -> None:
     ]
 
 
+def test_crossing_unlocks_curated_travel_stops() -> None:
+    crossed = crossed_places(Decimal("390"), Decimal("840"))
+
+    assert [place.code for place in crossed] == ["kerch", "nerubayske", "butuceni"]
+
+
 def test_finish_caps_percent_and_tracks_extra_distance() -> None:
     progress = build_journey_progress(Decimal("2512.40"))
 
@@ -38,6 +49,8 @@ def test_finish_caps_percent_and_tracks_extra_distance() -> None:
     assert progress.percent == Decimal("100.0")
     assert progress.next_checkpoint is None
     assert progress.overage_km == Decimal("12.40")
+    assert progress.current_place.code == "chamonix"
+    assert progress.next_place is None
 
 
 def test_map_renderer_returns_telegram_ready_png() -> None:

@@ -5,7 +5,7 @@ from datetime import date
 from decimal import Decimal
 
 from app.achievements import AchievementDefinition, AwardView
-from app.journey import JOURNEY_TITLE, JourneyCheckpoint, JourneyProgress
+from app.journey import JOURNEY_TITLE, JourneyCheckpoint, JourneyPlace, JourneyProgress
 from app.leagues import LEAGUE_EMOJI, LEAGUE_TITLES, League
 from app.periods import DateRange, Period
 from app.repository import RankingEntry, Totals, UserStats
@@ -63,6 +63,7 @@ def journey_progress_lines(
     progress: JourneyProgress,
     *,
     newly_reached: list[JourneyCheckpoint] | None = None,
+    newly_reached_places: list[JourneyPlace] | None = None,
     include_title: bool = True,
 ) -> list[str]:
     lines: list[str] = []
@@ -87,6 +88,23 @@ def journey_progress_lines(
             f"осталось {format_km(progress.remaining_to_next_km)} км"
         )
 
+    if newly_reached_places:
+        lines.extend(["", "🧭 <b>Новая остановка на маршруте!</b>"])
+        for place in newly_reached_places:
+            lines.extend([f"📍 <b>{place.title}</b>", f"💡 {place.fact}"])
+    else:
+        lines.extend(
+            [
+                f"🧭 Сейчас рядом: <b>{progress.current_place.title}</b>",
+                f"💡 {progress.current_place.fact}",
+            ]
+        )
+    if progress.next_place is not None:
+        lines.append(
+            f"Дальше: {progress.next_place.title} · "
+            f"{format_km(progress.remaining_to_next_place_km)} км"
+        )
+
     if newly_reached:
         lines.extend(
             [
@@ -105,10 +123,15 @@ def render_journey_progress(
     progress: JourneyProgress,
     *,
     newly_reached: list[JourneyCheckpoint] | None = None,
+    newly_reached_places: list[JourneyPlace] | None = None,
 ) -> str:
     return "\n".join(
         [
-            *journey_progress_lines(progress, newly_reached=newly_reached),
+            *journey_progress_lines(
+                progress,
+                newly_reached=newly_reached,
+                newly_reached_places=newly_reached_places,
+            ),
             "",
             "🏆 /top · 👤 /me · ↩️ /undo",
         ]
@@ -127,6 +150,7 @@ def render_run_confirmation(
     new_awards: list[AchievementDefinition] | None = None,
     journey_progress: JourneyProgress | None = None,
     new_journey_checkpoints: list[JourneyCheckpoint] | None = None,
+    new_journey_places: list[JourneyPlace] | None = None,
 ) -> str:
     lines = [
         "✅ <b>Пробежка записана</b>",
@@ -167,6 +191,7 @@ def render_run_confirmation(
                 *journey_progress_lines(
                     journey_progress,
                     newly_reached=new_journey_checkpoints,
+                    newly_reached_places=new_journey_places,
                 ),
             ]
         )

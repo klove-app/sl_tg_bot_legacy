@@ -8,7 +8,12 @@ from sqlalchemy import Select, and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.journey import JOURNEY_CHECKPOINTS, JOURNEY_YEAR
+from app.journey import (
+    JOURNEY_CHECKPOINTS,
+    JOURNEY_PLACES,
+    JOURNEY_YEAR,
+    place_milestone_code,
+)
 from app.leagues import League, initial_leagues, rollover_leagues
 from app.models import (
     Chat,
@@ -499,6 +504,11 @@ async def backfill_journey_milestones(
                 for checkpoint in JOURNEY_CHECKPOINTS[1:]
                 if checkpoint.distance_km <= totals.total_km
             ]
+            reached.extend(
+                place_milestone_code(place)
+                for place in JOURNEY_PLACES[1:]
+                if place.distance_km <= totals.total_km
+            )
             await claim_journey_milestones(
                 session,
                 chat_id=chat_id,

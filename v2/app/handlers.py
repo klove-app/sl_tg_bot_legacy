@@ -22,6 +22,9 @@ from app.journey import (
     build_journey_progress,
     checkpoint_by_code,
     crossed_checkpoints,
+    crossed_places,
+    place_by_milestone_code,
+    place_milestone_code,
     render_journey_map,
 )
 from app.keyboards import top_period_keyboard, undo_keyboard
@@ -175,16 +178,32 @@ async def _save_parsed_run(
         if run.run_date.year == JOURNEY_YEAR
         else ()
     )
+    place_candidates = (
+        crossed_places(
+            journey_totals.total_km - run.distance_km,
+            journey_totals.total_km,
+        )
+        if run.run_date.year == JOURNEY_YEAR
+        else ()
+    )
     claimed_codes = await claim_journey_milestones(
         session,
         chat_id=message.chat.id,
-        checkpoint_codes=[checkpoint.code for checkpoint in checkpoint_candidates],
+        checkpoint_codes=[
+            *(checkpoint.code for checkpoint in checkpoint_candidates),
+            *(place_milestone_code(place) for place in place_candidates),
+        ],
         reached_total_km=journey_totals.total_km,
         run_id=run.id,
     )
     await session.commit()
     journey_progress = build_journey_progress(journey_totals.total_km)
-    new_journey_checkpoints = [checkpoint_by_code(code) for code in claimed_codes]
+    new_journey_checkpoints = [
+        checkpoint_by_code(code) for code in claimed_codes if not code.startswith("place:")
+    ]
+    new_journey_places = [
+        place_by_milestone_code(code) for code in claimed_codes if code.startswith("place:")
+    ]
     month_range = period_range(Period.MONTH, today)
     month_stats = await get_user_stats(
         session,
@@ -226,6 +245,7 @@ async def _save_parsed_run(
             new_awards=new_awards,
             journey_progress=journey_progress,
             new_journey_checkpoints=new_journey_checkpoints,
+            new_journey_places=new_journey_places,
         ),
         reply_markup=top_period_keyboard(Period.MONTH, today=today),
         reply=True,

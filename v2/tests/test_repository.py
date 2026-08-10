@@ -245,8 +245,16 @@ async def test_journey_backfill_silently_reserves_old_checkpoints(database) -> N
             reached_total_km=Decimal("600.00"),
             run_id=run.id,
         )
+        repeated_place = await claim_journey_milestones(
+            session,
+            chat_id=1,
+            checkpoint_codes=["place:taman"],
+            reached_total_km=Decimal("600.00"),
+            run_id=run.id,
+        )
 
     assert repeated == []
+    assert repeated_place == []
 
 
 @pytest.mark.asyncio

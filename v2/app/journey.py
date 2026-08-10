@@ -25,6 +25,15 @@ class JourneyCheckpoint:
 
 
 @dataclass(frozen=True)
+class JourneyPlace:
+    code: str
+    distance_km: Decimal
+    title: str
+    map_label: str
+    fact: str
+
+
+@dataclass(frozen=True)
 class JourneyProgress:
     total_km: Decimal
     target_km: Decimal
@@ -34,6 +43,9 @@ class JourneyProgress:
     remaining_to_next_km: Decimal
     remaining_to_finish_km: Decimal
     overage_km: Decimal
+    current_place: JourneyPlace
+    next_place: JourneyPlace | None
+    remaining_to_next_place_km: Decimal
 
     @property
     def completed(self) -> bool:
@@ -85,6 +97,139 @@ JOURNEY_CHECKPOINTS = (
     ),
 )
 
+JOURNEY_PLACES = (
+    JourneyPlace(
+        code="krasnodar_park",
+        distance_km=Decimal("0"),
+        title="Парк Краснодар",
+        map_label="PARK KRASNODAR",
+        fact="Здесь начинается наш общий путь длиной 2 500 км.",
+    ),
+    JourneyPlace(
+        code="taman",
+        distance_km=Decimal("200"),
+        title="Тамань",
+        map_label="TAMAN",
+        fact="Таманский полуостров лежит между Азовским и Чёрным морями.",
+    ),
+    JourneyPlace(
+        code="kerch",
+        distance_km=Decimal("400"),
+        title="Керчь",
+        map_label="KERCH",
+        fact="История города насчитывает более 2 600 лет; античный центр назывался Пантикапей.",
+    ),
+    JourneyPlace(
+        code="nerubayske",
+        distance_km=Decimal("625"),
+        title="Нерубайское",
+        map_label="NERUBAYSKE",
+        fact=(
+            "Рядом начинается часть Одесских катакомб: их сеть оценивают примерно "
+            "в 2 500 км — ровно как весь наш маршрут."
+        ),
+    ),
+    JourneyPlace(
+        code="butuceni",
+        distance_km=Decimal("825"),
+        title="Бутучены · Старый Орхей",
+        map_label="BUTUCENI",
+        fact="Здесь действует монастырь с храмами, высеченными прямо в известняковой скале.",
+    ),
+    JourneyPlace(
+        code="viscri",
+        distance_km=Decimal("1050"),
+        title="Вискри",
+        map_label="VISCRI",
+        fact="Село известно укреплённой церковью и входит в наследие ЮНЕСКО с 1999 года.",
+    ),
+    JourneyPlace(
+        code="tokaj",
+        distance_km=Decimal("1250"),
+        title="Токай",
+        map_label="TOKAJ",
+        fact=(
+            "Виноградники и лабиринты погребов Токая охраняются ЮНЕСКО; "
+            "регион регулируется с 1737 года."
+        ),
+    ),
+    JourneyPlace(
+        code="budapest",
+        distance_km=Decimal("1450"),
+        title="Будапешт · Дунай",
+        map_label="BUDAPEST",
+        fact="Берега Дуная в центре Будапешта входят в объект Всемирного наследия ЮНЕСКО.",
+    ),
+    JourneyPlace(
+        code="rust",
+        distance_km=Decimal("1625"),
+        title="Руст · Нойзидлер-Зе",
+        map_label="RUST",
+        fact=(
+            "Рядом находится самое западное степное озеро Евразии "
+            "и старинные винодельческие деревни."
+        ),
+    ),
+    JourneyPlace(
+        code="graz",
+        distance_km=Decimal("1760"),
+        title="Грац",
+        map_label="GRAZ",
+        fact="Город веками был перекрёстком германской, балканской и средиземноморской культур.",
+    ),
+    JourneyPlace(
+        code="bled",
+        distance_km=Decimal("1900"),
+        title="Блед",
+        map_label="BLED",
+        fact="Посреди озера находится единственный природный остров Словении.",
+    ),
+    JourneyPlace(
+        code="tarvisio",
+        distance_km=Decimal("2030"),
+        title="Тарвизио",
+        map_label="TARVISIO",
+        fact="Совсем рядом сходятся границы Италии, Словении и Австрии.",
+    ),
+    JourneyPlace(
+        code="bellagio",
+        distance_km=Decimal("2200"),
+        title="Белладжо · озеро Комо",
+        map_label="BELLAGIO",
+        fact="Белладжо стоит на мысе, где озеро Комо расходится на два южных рукава.",
+    ),
+    JourneyPlace(
+        code="aosta",
+        distance_km=Decimal("2340"),
+        title="Аоста",
+        map_label="AOSTA",
+        fact=(
+            "Римляне основали Аосту в 25 году до н. э.; античные ворота "
+            "и театр сохранились до сих пор."
+        ),
+    ),
+    JourneyPlace(
+        code="courmayeur",
+        distance_km=Decimal("2440"),
+        title="Курмайёр",
+        map_label="COURMAYEUR",
+        fact=(
+            "Мы уже у итальянского подножия Монблана — до финиша остаётся "
+            "последний альпийский рывок."
+        ),
+    ),
+    JourneyPlace(
+        code="chamonix",
+        distance_km=JOURNEY_TARGET_KM,
+        title="Шамони · Монблан",
+        map_label="CHAMONIX",
+        fact=(
+            "В 1924 году Шамони принял соревнования, позже признанные "
+            "первыми зимними Олимпийскими играми."
+        ),
+    ),
+)
+
 ROUTE_TRACK = (
     (Decimal("0"), (1162, 345)),
     (Decimal("125"), (1125, 340)),
@@ -128,6 +273,19 @@ def build_journey_progress(total_km: Decimal) -> JourneyProgress:
         if next_checkpoint is not None
         else Decimal("0")
     )
+    current_place = JOURNEY_PLACES[0]
+    next_place: JourneyPlace | None = None
+    for place in JOURNEY_PLACES:
+        if place.distance_km <= total:
+            current_place = place
+            continue
+        next_place = place
+        break
+    remaining_to_next_place = (
+        max(Decimal("0"), next_place.distance_km - total)
+        if next_place is not None
+        else Decimal("0")
+    )
     return JourneyProgress(
         total_km=total,
         target_km=JOURNEY_TARGET_KM,
@@ -141,6 +299,9 @@ def build_journey_progress(total_km: Decimal) -> JourneyProgress:
         overage_km=max(Decimal("0"), total - JOURNEY_TARGET_KM).quantize(
             Decimal("0.01")
         ),
+        current_place=current_place,
+        next_place=next_place,
+        remaining_to_next_place_km=remaining_to_next_place.quantize(Decimal("0.01")),
     )
 
 
@@ -163,6 +324,30 @@ def checkpoint_by_code(code: str) -> JourneyCheckpoint:
     return next(checkpoint for checkpoint in JOURNEY_CHECKPOINTS if checkpoint.code == code)
 
 
+def crossed_places(
+    previous_total_km: Decimal,
+    current_total_km: Decimal,
+) -> tuple[JourneyPlace, ...]:
+    previous = Decimal(previous_total_km)
+    current = Decimal(current_total_km)
+    if current <= previous:
+        return ()
+    return tuple(
+        place
+        for place in JOURNEY_PLACES[1:]
+        if previous < place.distance_km <= current
+    )
+
+
+def place_milestone_code(place: JourneyPlace) -> str:
+    return f"place:{place.code}"
+
+
+def place_by_milestone_code(code: str) -> JourneyPlace:
+    place_code = code.removeprefix("place:")
+    return next(place for place in JOURNEY_PLACES if place.code == place_code)
+
+
 def _font(size: int):
     return ImageFont.load_default(size=size)
 
@@ -177,9 +362,9 @@ def _base_map() -> Image.Image:
         )
 
 
-def _point_at_progress(progress: JourneyProgress) -> tuple[int, int]:
-    distance = min(progress.total_km, progress.target_km)
-    if distance >= progress.target_km:
+def _track_point_at_distance(distance_km: Decimal) -> tuple[int, int]:
+    distance = min(max(Decimal("0"), distance_km), JOURNEY_TARGET_KM)
+    if distance >= JOURNEY_TARGET_KM:
         return ROUTE_TRACK[-1][1]
     for start, end in zip(ROUTE_TRACK, ROUTE_TRACK[1:], strict=False):
         start_distance, start_point = start
@@ -192,6 +377,10 @@ def _point_at_progress(progress: JourneyProgress) -> tuple[int, int]:
                 round(start_point[1] + (end_point[1] - start_point[1]) * ratio),
             )
     return ROUTE_TRACK[-1][1]
+
+
+def _point_at_progress(progress: JourneyProgress) -> tuple[int, int]:
+    return _track_point_at_distance(progress.total_km)
 
 
 def _travelled_polyline(progress: JourneyProgress) -> list[tuple[int, int]]:
@@ -219,6 +408,17 @@ def render_journey_map(progress: JourneyProgress) -> bytes:
         draw.line(travelled, fill=(3, 8, 8, 190), width=14, joint="curve")
         draw.line(travelled, fill=(255, 95, 69, 255), width=8, joint="curve")
 
+    for place in JOURNEY_PLACES[1:-1]:
+        x, y = _track_point_at_distance(place.distance_km)
+        reached = place.distance_km <= progress.total_km
+        fill = (255, 95, 69, 255) if reached else (178, 184, 181, 255)
+        draw.ellipse(
+            (x - 4, y - 4, x + 4, y + 4),
+            fill=fill,
+            outline=(4, 11, 11, 220),
+            width=2,
+        )
+
     for checkpoint in JOURNEY_CHECKPOINTS:
         x, y = checkpoint.point
         reached = checkpoint.distance_km <= progress.total_km
@@ -236,6 +436,27 @@ def render_journey_map(progress: JourneyProgress) -> bytes:
         fill=(255, 95, 69, 255),
         outline=(255, 250, 239, 255),
         width=6,
+    )
+
+    place_label = f"NEAR {progress.current_place.map_label}"
+    label_font = _font(15)
+    label_bbox = draw.textbbox((0, 0), place_label, font=label_font)
+    label_width = label_bbox[2] - label_bbox[0] + 24
+    label_height = 32
+    label_x = max(18, min(MAP_SIZE[0] - label_width - 18, marker_x - label_width // 2))
+    label_y = marker_y - 58 if marker_y > 110 else marker_y + 28
+    draw.rounded_rectangle(
+        (label_x, label_y, label_x + label_width, label_y + label_height),
+        radius=14,
+        fill=(3, 10, 10, 220),
+        outline=(255, 255, 255, 55),
+        width=1,
+    )
+    draw.text(
+        (label_x + 12, label_y + 8),
+        place_label,
+        font=label_font,
+        fill=(248, 245, 235, 255),
     )
 
     draw.rounded_rectangle(
