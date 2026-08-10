@@ -5,10 +5,25 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import Select, and_, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.journey import (
+    JOURNEY_CHECKPOINTS,
+    JOURNEY_PLACES,
+    JOURNEY_YEAR,
+    place_milestone_code,
+)
 from app.leagues import League, initial_leagues, rollover_leagues
-from app.models import Chat, LeagueMembership, Run, Runner, SummaryDelivery, utc_now
+from app.models import (
+    Chat,
+    JourneyMilestone,
+    LeagueMembership,
+    Run,
+    Runner,
+    SummaryDelivery,
+    utc_now,
+)
 from app.periods import DateRange, month_date_range, previous_month_start
 
 
@@ -422,6 +437,86 @@ async def get_totals(
         runs_count=int(row.runs_count),
         runners_count=int(row.runners_count),
     )
+
+
+async def get_journey_totals(
+    session: AsyncSession,
+    *,
+    chat_id: int,
+    through: date,
+) -> Totals:
+    year_start = date(JOURNEY_YEAR, 1, 1)
+    year_end = date(JOURNEY_YEAR, 12, 31)
+    effective_end = min(through, year_end)
+    if effective_end < year_start:
+        return Totals(total_km=Decimal("0.00"), runs_count=0, runners_count=0)
+    return await get_totals(
+        session,
+        chat_id=chat_id,
+        date_range=DateRange(start=year_start, end=effective_end),
+    )
+
+
+async def claim_journey_milestones(
+    session: AsyncSession,
+    *,
+    chat_id: int,
+    checkpoint_codes: list[str],
+    reached_total_km: Decimal,
+    run_id: int | None,
+) -> list[str]:
+    claimed: list[str] = []
+    for code in checkpoint_codes:
+        key = (chat_id, JOURNEY_YEAR, code)
+        if await session.get(JourneyMilestone, key) is not None:
+            continue
+        try:
+            async with session.begin_nested():
+                session.add(
+                    JourneyMilestone(
+                        chat_id=chat_id,
+                        year=JOURNEY_YEAR,
+                        checkpoint_code=code,
+                        reached_total_km=reached_total_km,
+                        run_id=run_id,
+                    )
+                )
+                await session.flush()
+        except IntegrityError:
+            continue
+        claimed.append(code)
+    return claimed
+
+
+async def backfill_journey_milestones(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    async with sessions() as session:
+        chat_ids = await get_chat_ids(session)
+        for chat_id in chat_ids:
+            totals = await get_journey_totals(
+                session,
+                chat_id=chat_id,
+                through=date(JOURNEY_YEAR, 12, 31),
+            )
+            reached = [
+                checkpoint.code
+                for checkpoint in JOURNEY_CHECKPOINTS[1:]
+                if checkpoint.distance_km <= totals.total_km
+            ]
+            reached.extend(
+                place_milestone_code(place)
+                for place in JOURNEY_PLACES[1:]
+                if place.distance_km <= totals.total_km
+            )
+            await claim_journey_milestones(
+                session,
+                chat_id=chat_id,
+                checkpoint_codes=reached,
+                reached_total_km=totals.total_km,
+                run_id=None,
+            )
+        await session.commit()
 
 
 async def get_user_stats(

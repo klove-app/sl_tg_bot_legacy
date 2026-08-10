@@ -86,4 +86,6 @@ async def test_weekly_summary_is_delivered_only_once() -> None:
 
     bot.send_message.assert_awaited_once()
     assert "Итоги недели" in bot.send_message.await_args.args[1]
+    assert "Из Кубани к Монблану" in bot.send_message.await_args.args[1]
+    assert "6,03 / 2500 км" in bot.send_message.await_args.args[1]
     await database.engine.dispose()
