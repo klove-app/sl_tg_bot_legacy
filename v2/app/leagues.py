@@ -20,12 +20,12 @@ LEAGUE_EMOJI = {
 
 
 def initial_leagues(ordered_user_ids: list[int]) -> dict[int, League]:
-    """Seed roughly the strongest 40% into Tempo and everyone else into Trail."""
+    """Seed the stronger half into Tempo and everyone else into Trail."""
     runners_count = len(ordered_user_ids)
     if runners_count < 2:
         return {user_id: League.TRAIL for user_id in ordered_user_ids}
 
-    tempo_count = max(1, round(runners_count * 0.4))
+    tempo_count = (runners_count + 1) // 2
     tempo_count = min(tempo_count, runners_count - 1)
     return {
         user_id: League.TEMPO if index < tempo_count else League.TRAIL
