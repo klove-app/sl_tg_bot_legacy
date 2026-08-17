@@ -287,6 +287,46 @@ def _date_range_label(date_range: DateRange) -> str:
     return f"{format_run_date(date_range.start)} – {format_run_date(date_range.end)}"
 
 
+_COMPACT_AWARD_TITLES = {
+    "club_2": "2 км",
+    "club_5": "5 км",
+    "club_10": "10 км",
+    "couch_1": "Диван I",
+    "couch_2": "Диван II",
+    "couch_3": "Диван III",
+    "not_accidental": "Не случайность",
+    "three_outings": "3 выхода",
+    "system_4w": "Система",
+    "total_100": "100 км",
+    "total_500": "500 км",
+    "total_1000": "1000 км",
+}
+
+
+def _compact_award_rows(
+    runner_awards: list[AwardView], *, max_length: int = 58
+) -> list[str]:
+    chips = [
+        (
+            f"{award.definition.emoji} "
+            f"{_COMPACT_AWARD_TITLES.get(award.definition.code, award.definition.title)}"
+        )
+        for award in runner_awards
+    ]
+    rows: list[str] = []
+    current = ""
+    for chip in chips:
+        candidate = f"{current} · {chip}" if current else chip
+        if current and len(candidate) > max_length:
+            rows.append(f"↳ {current}")
+            current = chip
+        else:
+            current = candidate
+    if current:
+        rows.append(f"↳ {current}")
+    return rows
+
+
 def _grouped_award_lines(awards: list[AwardView]) -> list[str]:
     grouped: dict[int, tuple[str, list[AwardView]]] = {}
     for award in awards:
@@ -295,17 +335,16 @@ def _grouped_award_lines(awards: list[AwardView]) -> list[str]:
         grouped[award.user_id][1].append(award)
 
     lines: list[str] = []
-    for display_name, runner_awards in grouped.values():
+    for index, (display_name, runner_awards) in enumerate(grouped.values()):
+        if index:
+            lines.append("")
         lines.extend(
             [
                 (
                     f"👤 <b>{html.escape(display_name)}</b> · "
                     f"{pluralize(len(runner_awards), 'награда', 'награды', 'наград')}"
                 ),
-                *(
-                    f"  {award.definition.emoji} {award.definition.title}"
-                    for award in runner_awards
-                ),
+                *_compact_award_rows(runner_awards),
             ]
         )
     return lines
@@ -351,7 +390,7 @@ def render_period_summary(
     if journey_progress is not None:
         lines.extend(["", *journey_progress_lines(journey_progress)])
     if awards:
-        lines.extend(["", "🎖 <b>Новые награды</b>"])
+        lines.extend(["", f"🎖 <b>Новые награды</b> · {len(awards)}"])
         lines.extend(_grouped_award_lines(awards))
     if period is Period.MONTH:
         cup_lines: list[str] = []
