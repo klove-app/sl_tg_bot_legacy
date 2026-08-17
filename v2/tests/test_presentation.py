@@ -119,6 +119,43 @@ def test_render_league_ranking_has_both_leagues() -> None:
     assert "Лига «Тропа»" in text
 
 
+def test_render_weekly_summary_groups_awards_by_runner() -> None:
+    text = render_period_summary(
+        period=Period.WEEK,
+        date_range=period_range(Period.WEEK, date(2026, 8, 16)),
+        rankings={League.TEMPO: [], League.TRAIL: []},
+        totals=Totals(total_km=Decimal("0"), runs_count=0, runners_count=0),
+        awards=[
+            AwardView(
+                user_id=1,
+                display_name="Иван",
+                definition=ACHIEVEMENT_BY_CODE["not_accidental"],
+                reference_date=date(2026, 8, 10),
+            ),
+            AwardView(
+                user_id=1,
+                display_name="Иван",
+                definition=ACHIEVEMENT_BY_CODE["three_outings"],
+                reference_date=date(2026, 8, 12),
+            ),
+            AwardView(
+                user_id=2,
+                display_name="Ксения & друзья",
+                definition=ACHIEVEMENT_BY_CODE["club_5"],
+                reference_date=date(2026, 8, 13),
+            ),
+        ],
+    )
+
+    assert "<b>Итоги недели</b> · 10–16 августа" in text
+    assert "👤 <b>Иван</b> · 2 награды" in text
+    assert "  👟 Это уже не случайность" in text
+    assert "  📅 Три выхода" in text
+    assert "👤 <b>Ксения &amp; друзья</b> · 1 награда" in text
+    assert "  🔵 Клуб 5 км" in text
+    assert text.count("<b>Иван</b>") == 1
+
+
 def test_render_monthly_summary_lists_all_leagues_and_totals() -> None:
     entry = RankingEntry(
         user_id=1,
@@ -139,14 +176,15 @@ def test_render_monthly_summary_lists_all_leagues_and_totals() -> None:
                 display_name="Иван",
                 definition=ACHIEVEMENT_BY_CODE["not_accidental"],
                 reference_date=date(2026, 8, 10),
-            )
+            ),
         ],
         sleeping_runners=["Ксения & друзья"],
     )
 
     assert "<b>Итоги месяца</b> · 1–31 августа" in text
     assert "25,4 км</b> вместе" in text
-    assert "👟 <b>Иван</b> — Это уже не случайность" in text
+    assert "👤 <b>Иван</b> · 1 награда" in text
+    assert "  👟 Это уже не случайность" in text
     assert "🔥 Держит Темп — <b>Иван</b>" in text
     assert "Спящие ячейки:</b> Ксения &amp; друзья" in text
     assert "переходят в «Темп»" in text
