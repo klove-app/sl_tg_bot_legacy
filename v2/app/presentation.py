@@ -287,6 +287,30 @@ def _date_range_label(date_range: DateRange) -> str:
     return f"{format_run_date(date_range.start)} – {format_run_date(date_range.end)}"
 
 
+def _grouped_award_lines(awards: list[AwardView]) -> list[str]:
+    grouped: dict[int, tuple[str, list[AwardView]]] = {}
+    for award in awards:
+        if award.user_id not in grouped:
+            grouped[award.user_id] = (award.display_name, [])
+        grouped[award.user_id][1].append(award)
+
+    lines: list[str] = []
+    for display_name, runner_awards in grouped.values():
+        lines.extend(
+            [
+                (
+                    f"👤 <b>{html.escape(display_name)}</b> · "
+                    f"{pluralize(len(runner_awards), 'награда', 'награды', 'наград')}"
+                ),
+                *(
+                    f"  {award.definition.emoji} {award.definition.title}"
+                    for award in runner_awards
+                ),
+            ]
+        )
+    return lines
+
+
 def render_period_summary(
     *,
     period: Period,
@@ -328,11 +352,7 @@ def render_period_summary(
         lines.extend(["", *journey_progress_lines(journey_progress)])
     if awards:
         lines.extend(["", "🎖 <b>Новые награды</b>"])
-        lines.extend(
-            f"{award.definition.emoji} <b>{html.escape(award.display_name)}</b> — "
-            f"{award.definition.title}"
-            for award in awards
-        )
+        lines.extend(_grouped_award_lines(awards))
     if period is Period.MONTH:
         cup_lines: list[str] = []
         tempo = next(

@@ -1,6 +1,6 @@
 # RunTracker Bot v2 — architecture
 
-Last updated: 2026-08-10
+Last updated: 2026-08-17
 
 ## Product boundary
 
@@ -114,8 +114,9 @@ The bot runs a lightweight scheduler alongside long polling. It publishes:
 - a summary of the closed month on the first calendar day at `SUMMARY_HOUR` plus
   `MONTHLY_SUMMARY_MINUTE` (09:10 by default)
 
-Both summaries show every participant in both leagues, new achievements, and
-group totals. Summaries ending in 2026 also include year-to-date journey progress.
+Both summaries show every participant in both leagues, new achievements grouped
+under one compact block per runner, and group totals. Summaries ending in 2026
+also include year-to-date journey progress.
 Monthly summaries also show league titles and sleeping cells. Empty periods are
 recorded but not posted. `runbot_summary_deliveries` prevents a restart from
 duplicating a summary. The service remains single-replica because both Telegram
