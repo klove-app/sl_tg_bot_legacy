@@ -148,12 +148,13 @@ def test_render_weekly_summary_groups_awards_by_runner() -> None:
     )
 
     assert "<b>Итоги недели</b> · 10–16 августа" in text
+    assert "🎖 <b>Новые награды</b> · 3" in text
     assert "👤 <b>Иван</b> · 2 награды" in text
-    assert "  👟 Это уже не случайность" in text
-    assert "  📅 Три выхода" in text
+    assert "↳ 👟 Не случайность · 📅 3 выхода" in text
     assert "👤 <b>Ксения &amp; друзья</b> · 1 награда" in text
-    assert "  🔵 Клуб 5 км" in text
+    assert "↳ 🔵 5 км" in text
     assert text.count("<b>Иван</b>") == 1
+    assert "3 выхода\n\n👤 <b>Ксения" in text
 
 
 def test_render_monthly_summary_lists_all_leagues_and_totals() -> None:
@@ -183,8 +184,9 @@ def test_render_monthly_summary_lists_all_leagues_and_totals() -> None:
 
     assert "<b>Итоги месяца</b> · 1–31 августа" in text
     assert "25,4 км</b> вместе" in text
+    assert "🎖 <b>Новые награды</b> · 1" in text
     assert "👤 <b>Иван</b> · 1 награда" in text
-    assert "  👟 Это уже не случайность" in text
+    assert "↳ 👟 Не случайность" in text
     assert "🔥 Держит Темп — <b>Иван</b>" in text
     assert "Спящие ячейки:</b> Ксения &amp; друзья" in text
     assert "переходят в «Темп»" in text
