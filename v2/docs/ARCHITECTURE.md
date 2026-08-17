@@ -92,12 +92,12 @@ Each runner has one league assignment per calendar month:
 - `trail` / «Тропа» for new and developing runners
 - `tempo` / «Темп» for the stronger cohort
 
-The first assignment seeds roughly the strongest 40% of known runners into
-«Темп», using the trailing 30 days. The assignment then stays fixed for the
-month. At the next month boundary, up to two active «Тропа» leaders are promoted
-and the same number from the bottom of «Темп» are relegated. At least one runner
-remains in «Темп». Runners who join after monthly assignments exist start in
-«Тропа».
+The first assignment seeds the stronger half of known runners into «Темп»,
+using the trailing 30 days; when the number of runners is odd, the extra runner
+goes to «Темп». The assignment then stays fixed for the month. At the next month
+boundary, up to two active «Тропа» leaders are promoted and the same number from
+the bottom of «Темп» are relegated. At least one runner remains in «Темп».
+Runners who join after monthly assignments exist start in «Тропа».
 
 League tables include every assigned runner, including zero-distance rows, while
 the group totals count only runners who recorded a run in the selected period.
